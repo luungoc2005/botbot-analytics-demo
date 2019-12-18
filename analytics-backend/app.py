@@ -4,4 +4,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-from .routes import index, demo_list
+DATA_DIR = './data'
+
+from .routes import index, demo_list, clustering

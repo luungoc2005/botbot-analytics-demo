@@ -20,6 +20,7 @@ initializeIcons();
 
 function App() {
   const [demoList, setDemoList] = useState(null);
+  const [demoFile, setDemoFile] = useState('');
 
   useEffect(() => {
     const fetchDemoList = async () => {
@@ -33,6 +34,8 @@ function App() {
     <Router>
       <AppContext.Provider value={{
         demoList,
+        demoFile,
+        setDemoFile,
       }}>
         <div className="ms-Grid" dir="ltr">
           <div className="ms-Grid-row">
