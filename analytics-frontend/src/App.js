@@ -12,6 +12,7 @@ import { AppContext } from './context';
 import { Navigation } from './components/Navigation';
 import { HomePage } from './pages/HomePage';
 import { ClusteringPage } from './pages/ClusteringPage';
+import { InsightsPage } from './pages/InsightsPage';
 
 import 'office-ui-fabric-core/dist/css/fabric.min.css';
 import { initializeIcons } from 'office-ui-fabric-react/lib/Icons';
@@ -44,6 +45,7 @@ function App() {
               <Switch>
                 <Route exact path="/" component={HomePage} />
                 <Route exact path="/clustering" component={ClusteringPage} />
+                <Route exact path="/insights" component={InsightsPage} />
               </Switch>
             </div>
           </div>

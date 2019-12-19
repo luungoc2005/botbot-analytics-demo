@@ -53,9 +53,12 @@ const classNames = mergeStyleSets({
     bottom: 0,
     left: 0,
     width: '100%',
-    fontSize: fonts.small.fontSize,
+    fontSize: fonts.tiny.fontSize,
     boxSizing: 'border-box',
     userSelect: 'none',
+    textOverflow: 'ellipsis',
+    wordBreak: 'keep-all',
+    overflow: 'hidden',
   },
   listGridExampleImage: {
     position: 'absolute',
@@ -66,33 +69,35 @@ const classNames = mergeStyleSets({
 });
 
 export const DemoFileSelector = ({ onDemoFileClick = null }) => {
-  const { demoList } = useContext(AppContext);
+  const { demoFile, demoList } = useContext(AppContext);
   return <>
     <Text>Please select a demo history file</Text>
-    <FocusZone style={{ paddingTop: 20 }}>
+    <FocusZone style={{ paddingTop: 20, paddingBottom: 20 }}>
       <List
         className={classNames.listGridExample}
         items={demoList}
         getItemCountForPage={() => 5}
         getPageHeight={() => window.innerHeight}
         renderedWindowsAhead={10}
-        onRenderCell={(item, index) => <CompoundButton 
+        onRenderCell={(item, index) => <CompoundButton
+          key={index}
+          toggle
+          checked={Boolean(demoFile === item)}
           style={{ padding: 0 }}
           onClick={() => onDemoFileClick && onDemoFileClick(item)}
         >
           <div
-            key={index}
             className={classNames.listGridExampleTile}
             data-is-focusable={true}
             style={{
-              width: 250
+              width: 100
             }}
           >
             <div className={classNames.listGridExampleSizer}>
               <div className={classNames.listGridExamplePadder}>
                 <img className={classNames.listGridExampleImage} />
                 <span className={classNames.listGridExampleLabel}>
-                  <Text>
+                  <Text variant="tiny">
                     {item}
                   </Text>
                 </span>

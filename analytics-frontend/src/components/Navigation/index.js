@@ -16,11 +16,15 @@ export const Navigation = () => {
     }}
     groups={[
       {
-        name: 'Home',
+        name: 'Analytics',
         links: [
           {
             name: 'Clustering',
             url: '/clustering',
+          },
+          {
+            name: 'Insights',
+            url: '/insights',
           }
         ]
       }

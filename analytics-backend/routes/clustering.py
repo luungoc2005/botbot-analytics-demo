@@ -27,12 +27,10 @@ def visualize_matrix(X: np.array) -> Tuple[np.array, np.array]:
 def clustering_visualize():
     file_name = request.args.get("file", "")
     only_fallback = request.args.get("only_fallback", "")
-
-    if only_fallback.lower() in ['1', 'true']:
-        only_fallback = True
+    only_fallback = only_fallback.lower() in ['1', 'true']
 
     file_path = path.join(DATA_DIR, escape(file_name))
-    if not path.exists(file_path):
+    if not path.exists(file_path) or not path.isfile(file_path):
         return BadRequest('File not found')
 
     df = cache.get_df_from_file(file_name)
@@ -76,7 +74,7 @@ def clustering_visualize():
         viz_groups[item_group]['text'].append(' '.join(text_list[i]))
     
     return jsonify({
-        'data': viz_groups.values(),
+        'data': list(viz_groups.values()),
         'layout': {
             'xaxis': {
                 'range': [0, 1]

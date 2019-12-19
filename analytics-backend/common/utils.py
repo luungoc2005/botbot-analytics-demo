@@ -1,4 +1,4 @@
-from common.ignore_lists import MESSAGE_IGNORE_LIST
+from .ignore_lists import MESSAGE_IGNORE_LIST
 from underthesea import word_tokenize
 
 import numpy as np
@@ -13,7 +13,11 @@ def get_text_list_from_df(df, is_in=None, is_not_in=None):
     if is_not_in is not None:
         df_tmp = df_tmp[~df_tmp['Intent'].isin(is_not_in)]
     text_list = df_tmp['User Message']
-    text_list = [text for text in text_list if text not in MESSAGE_IGNORE_LIST]
+    text_list = [
+        text.strip() for text in text_list 
+        if text not in MESSAGE_IGNORE_LIST
+        and len(text.strip()) > 0
+    ]
     text_list = [word_tokenize(' '.join(text.split())) for text in text_list]
     return text_list
 

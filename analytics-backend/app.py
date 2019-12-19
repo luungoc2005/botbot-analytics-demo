@@ -6,4 +6,10 @@ CORS(app)
 
 DATA_DIR = './data'
 
-from .routes import index, demo_list, clustering
+from .routes import \
+    index, \
+    demo_list, \
+    clustering, \
+    intents_list, \
+    top_intents, \
+    top_words
