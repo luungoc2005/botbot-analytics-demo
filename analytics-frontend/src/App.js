@@ -13,6 +13,8 @@ import { Navigation } from './components/Navigation';
 import { HomePage } from './pages/HomePage';
 import { ClusteringPage } from './pages/ClusteringPage';
 import { InsightsPage } from './pages/InsightsPage';
+import { TrendsKeywordsPage } from './pages/TrendsKeywordsPage';
+import { TrendsIntentsPage } from './pages/TrendsIntentsPage';
 
 import 'office-ui-fabric-core/dist/css/fabric.min.css';
 import { initializeIcons } from 'office-ui-fabric-react/lib/Icons';
@@ -46,6 +48,8 @@ function App() {
                 <Route exact path="/" component={HomePage} />
                 <Route exact path="/clustering" component={ClusteringPage} />
                 <Route exact path="/insights" component={InsightsPage} />
+                <Route exact path="/trends_keywords" component={TrendsKeywordsPage} />
+                <Route exact path="/trends_intents" component={TrendsIntentsPage} />
               </Switch>
             </div>
           </div>

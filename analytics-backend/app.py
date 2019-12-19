@@ -12,4 +12,6 @@ from .routes import \
     clustering, \
     intents_list, \
     top_intents, \
-    top_words
+    top_words, \
+    words_trend, \
+    intents_trend

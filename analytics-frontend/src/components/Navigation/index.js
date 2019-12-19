@@ -25,7 +25,21 @@ export const Navigation = () => {
           {
             name: 'Insights',
             url: '/insights',
-          }
+          },
+          {
+            name: 'Trends',
+            // url: '/trends',
+            links: [
+              {
+                name: 'Keywords',
+                url: '/trends_keywords'
+              },
+              {
+                name: 'Intents',
+                url: '/trends_intents'
+              }
+            ]
+          },
         ]
       }
     ]}

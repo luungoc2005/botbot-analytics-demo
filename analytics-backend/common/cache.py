@@ -10,7 +10,12 @@ def get_df_from_file(file_name):
         if len(CACHE) > MAX_CACHE:
             del CACHE[list(CACHE.keys())[0]]
         if file_name not in CACHE:
-            CACHE[file_name] = pd.read_csv(path.join(DATA_DIR, file_name))
+            df = pd.read_csv(path.join(DATA_DIR, file_name))
+            df['MessageReceived'] = pd.to_datetime(df['MessageReceived'])
+            df = df.set_index(pd.DatetimeIndex(df['MessageReceived']))
+
+            CACHE[file_name] = df
+            
         return CACHE[file_name]
     except:
         return None

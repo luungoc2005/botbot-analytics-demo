@@ -18,7 +18,7 @@ def top_intents():
     df = cache.get_df_from_file(file_name)
     intents_list = list(set(df['Intent']))
     intents_list = [item for item in intents_list if item in only]
-    response = list(sorted([
+    intents_list = list(sorted([
         {
             'name': item,
             'count': len(df[df['Intent'] == item])
@@ -26,7 +26,25 @@ def top_intents():
         for item in intents_list
     ], key=lambda item: -item['count']))
 
-    if top_n > 0:
-        response = response[:top_n]
+    # plot a pie chart
 
-    return jsonify(response)
+
+    if top_n > 0:
+        intents_list = intents_list[:top_n]
+
+    return jsonify({
+        'list': intents_list,
+        'plot': {
+            'data': [{
+                'values': [item.get('count', 0) for item in intents_list],
+                'labels': [item.get('name', '') for item in intents_list],
+                'type': 'pie',
+                'textinfo': 'label+percent',
+                'textposition': 'outside',
+                'automargin': True
+            }],
+            'layout': {
+                'showlegend': False
+            }
+        }
+    })

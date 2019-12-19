@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef } from 'react';
+import React, { useContext, useEffect, useState, useRef, useMemo } from 'react';
 
 // import { ChoiceGroup } from 'office-ui-fabric-react/lib/ChoiceGroup';
 // import { ProgressIndicator } from 'office-ui-fabric-react/lib/ProgressIndicator';
@@ -11,6 +11,8 @@ import { List } from 'office-ui-fabric-react/lib/List';
 import { Checkbox } from 'office-ui-fabric-react/lib/Checkbox';
 import { Callout } from 'office-ui-fabric-react/lib/Callout';
 import { ActionButton } from 'office-ui-fabric-react/lib/Button';
+// import { TextField } from 'office-ui-fabric-react/lib/TextField';
+import { ComboBox } from 'office-ui-fabric-react/lib/ComboBox';
 
 import { mergeStyleSets, getTheme, normalize } from 'office-ui-fabric-react/lib/Styling';
 
@@ -20,6 +22,17 @@ import Plot from 'react-plotly.js'
 
 import { AppContext } from '../../context';
 import { AnalyticsAPI } from '../../api';
+
+const hashCode = (str) => {
+  let hash = 0, i, chr;
+  if (str.length === 0) return hash;
+  for (i = 0; i < str.length; i++) {
+    chr   = str.charCodeAt(i);
+    hash  = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+};
 
 const theme = getTheme();
 
@@ -70,11 +83,16 @@ const styles = mergeStyleSets({
 
 export const InsightsPage = () => {
   const { demoFile, setDemoFile } = useContext(AppContext);
+  // component states
   const [ isCalloutVisible, setIsCalloutVisible ] = useState(false);
+
+  // data states
   const [ intentsData, setIntentsData ] = useState([]);
   const [ topIntentsData, setTopIntentsData ] = useState([]);
   const [ topWordsData, setTopWordsData ] = useState([]);
+
   const _menuButtonElement = useRef();
+  const _columnDivElement = useRef();
 
   useEffect(() => {
     if (!demoFile) {
@@ -128,6 +146,7 @@ export const InsightsPage = () => {
     }
     fetchTopWordsData();
   }, [demoFile, intentsData])
+
   const toggleIsCalloutVisible = () => setIsCalloutVisible(!isCalloutVisible);
 
   return (<Stack tokens={{
@@ -139,6 +158,7 @@ export const InsightsPage = () => {
     
     {demoFile && intentsData
     ? <>
+
       <div style={{ textAlign: 'right', width: '100%' }}>
         <div className={styles.buttonArea} ref={_menuButtonElement}>
           <ActionButton
@@ -183,20 +203,35 @@ export const InsightsPage = () => {
 
       <div className="ms-Grid" dir="ltr">
       <div className="ms-Grid-row">
-        <div className="ms-Grid-col ms-sm6">
+        <div className="ms-Grid-col ms-sm6" ref={_columnDivElement}>
           <Text variant="large">Top Intents</Text>
+          {topIntentsData && <>
+            {topIntentsData.plot && <div><Plot
+              data={topIntentsData.plot.data}
+              layout={{
+                width: _columnDivElement.current ? _columnDivElement.current.clientWidth : 300,
+                height: _columnDivElement.current ? _columnDivElement.current.clientWidth : 300,
+                ...topIntentsData.plot.layout,
+              }}
+              config={{
+                responsive: true,
+              }}
+            /></div>}
+
+          {topIntentsData.list && 
           <div className={styles.container} data-is-scrollable={true}>
-            <List 
-              items={topIntentsData}
+            <List
+              items={topIntentsData.list}
               onRenderCell={(item, index) => <div data-is-focusable={true} key={index}>
                 <div className={styles.itemContent}>
                   #{index + 1}: {item.name}
-                  <Text variant="small"> ({item.count})</Text>
+                  <Text variant="small"> ({item.count} hits)</Text>
                 </div>
               </div>}
             />
-          </div>
-        </div>
+          </div>}
+        </>}
+      </div>
 
       <div className="ms-Grid-col ms-sm6">
         <Text variant="large">Top Words</Text>
@@ -206,7 +241,7 @@ export const InsightsPage = () => {
             onRenderCell={(item, index) => <div data-is-focusable={true} key={index}>
               <div className={styles.itemContent}>
                 #{index + 1}: {item.word}
-                <Text variant="small"> ({item.count})</Text>
+                <Text variant="small"> ({item.count} mentions)</Text>
               </div>
             </div>}
           />

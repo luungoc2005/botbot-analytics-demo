@@ -22,4 +22,14 @@ export const AnalyticsAPI = {
     only: '',
     top_n: 10,
   }) => axios.get(`/top_words?${stringify(params)}`),
+  getWordsTrend: (params = {
+    file: '',
+    period: 'D',
+    words: '',
+  }) => axios.get(`/words_trend?${stringify(params)}`),
+  getIntentsTrend: (params = {
+    file: '',
+    period: 'D',
+    intents: '',
+  }) => axios.get(`/intents_trend?${stringify(params)}`),
 }
