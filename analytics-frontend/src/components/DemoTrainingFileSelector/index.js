@@ -14,15 +14,13 @@ const classNames = mergeStyleSets({
   listGridExample: {
     overflow: 'hidden',
     fontSize: 0,
-    position: 'relative',    
+    position: 'relative',
   },
   listGridExampleTile: {
     textAlign: 'center',
     outline: 'none',
     position: 'relative',
     float: 'left',
-    marginRight: 20,
-    marginBottom: 20,
     padding: 0,
     // background: palette.neutralLighter,
     selectors: {
@@ -74,21 +72,21 @@ const classNames = mergeStyleSets({
   }
 });
 
-export const DemoFileSelector = ({ onDemoFileClick = null }) => {
-  const { demoFile, demoList } = useContext(AppContext);
+export const DemoTrainingFileSelector = ({ onDemoFileClick = null }) => {
+  const { demoTrainingFile, demoTrainingList } = useContext(AppContext);
   return <>
-    <Text>Please select a demo history file</Text>
+    <Text>Please select a demo training file</Text>
     <FocusZone style={{ paddingTop: 20, paddingBottom: 20 }}>
       <List
         className={classNames.listGridExample}
-        items={demoList}
+        items={demoTrainingList}
         getItemCountForPage={() => 5}
         getPageHeight={() => window.innerHeight}
         renderedWindowsAhead={10}
         onRenderCell={(item, index) => <CompoundButton
           key={index}
           toggle
-          checked={Boolean(demoFile === item)}
+          checked={Boolean(demoTrainingFile === item)}
           style={{ padding: 0 }}
           onClick={() => onDemoFileClick && onDemoFileClick(item)}
           className={classNames.listGridExampleTile}
@@ -114,4 +112,4 @@ export const DemoFileSelector = ({ onDemoFileClick = null }) => {
   </>
 }
 
-export default DemoFileSelector;
+export default DemoTrainingFileSelector;

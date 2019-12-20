@@ -1,5 +1,6 @@
-from ..app import app, DATA_DIR
-from ..common import cache, utils, vn_utils, ignore_lists
+from main_app import DATA_DIR
+from routes.history_routes import history_routes_blueprint
+from common import cache, utils, vn_utils, ignore_lists
 
 import pandas as pd
 import numpy as np
@@ -15,7 +16,7 @@ def count_occurences(source_str, target_str):
     source_str = vn_utils.remove_tone_marks(source_str)
     return source_str.count(target_str)
 
-@app.route('/words_trend')
+@history_routes_blueprint.route('/words_trend')
 def words_trend():
     file_name = request.args.get("file", "")
     # only = request.args.get("only", "").split(",")
@@ -44,7 +45,7 @@ def words_trend():
         tmp_df = df.copy()
         tmp_df['Count'] = tmp_df.apply(lambda x: count_occurences(x['User Message'], word), axis=1)
         
-        word_result = tmp_df.groupby(df.index.to_period(period)).sum()[['Count']]
+        word_result = tmp_df.groupby(tmp_df.index.to_period(period)).sum()[['Count']]
         word_result.index = pd.to_datetime(word_result.index.to_timestamp())
         word_result.index = word_result.apply(lambda x: x.index.strftime("%Y-%m-%d %H:%M:%S"))
 

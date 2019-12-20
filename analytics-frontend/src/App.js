@@ -15,6 +15,7 @@ import { ClusteringPage } from './pages/ClusteringPage';
 import { InsightsPage } from './pages/InsightsPage';
 import { TrendsKeywordsPage } from './pages/TrendsKeywordsPage';
 import { TrendsIntentsPage } from './pages/TrendsIntentsPage';
+import { TrainingPage } from './pages/TrainingPage';
 
 import 'office-ui-fabric-core/dist/css/fabric.min.css';
 import { initializeIcons } from 'office-ui-fabric-react/lib/Icons';
@@ -23,7 +24,10 @@ initializeIcons();
 
 function App() {
   const [demoList, setDemoList] = useState(null);
+  const [demoTrainingList, setDemoTrainingList] = useState(null);
   const [demoFile, setDemoFile] = useState('');
+  const [demoTrainingFile, setDemoTrainingFile] = useState('');
+
 
   useEffect(() => {
     const fetchDemoList = async () => {
@@ -33,12 +37,22 @@ function App() {
     fetchDemoList();
   }, []);
 
+  useEffect(() => {
+    const fetchDemoTrainingList = async () => {
+      const resp = await AnalyticsAPI.getTrainingDemoList();
+      setDemoTrainingList(resp.data)
+    }
+  })
+
   return (
     <Router>
       <AppContext.Provider value={{
         demoList,
         demoFile,
         setDemoFile,
+        demoTrainingList,
+        demoTrainingFile,
+        setDemoTrainingFile,
       }}>
         <div className="ms-Grid" dir="ltr">
           <div className="ms-Grid-row">
@@ -50,6 +64,7 @@ function App() {
                 <Route exact path="/insights" component={InsightsPage} />
                 <Route exact path="/trends_keywords" component={TrendsKeywordsPage} />
                 <Route exact path="/trends_intents" component={TrendsIntentsPage} />
+                <Route exact path="/training" component={TrainingPage} />
               </Switch>
             </div>
           </div>

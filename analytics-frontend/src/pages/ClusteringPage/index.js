@@ -12,7 +12,7 @@ import { DemoFileSelector } from '../../components/DemoFileSelector';
 import Plot from 'react-plotly.js';
 
 import { AppContext } from '../../context';
-import { AnalyticsAPI } from '../../api';
+import { AnalyticsAPI, awaitTaskResult, socket } from '../../api';
 
 export const ClusteringPage = () => {
   const { demoFile, setDemoFile } = useContext(AppContext);
@@ -31,9 +31,17 @@ export const ClusteringPage = () => {
       const resp = await AnalyticsAPI.getClusteringVisualize({ 
         file: demoFile, 
         only_fallback: isOnlyFallback,
+        sid: socket.id,
       })
-      setClusteringData(resp.data);
-      setIsClusteringLoading(false);
+      const task_id = resp.data.task_id
+
+      if (task_id) {
+        awaitTaskResult(task_id, (data) => {
+          // console.log(data)
+          setClusteringData(data);
+          setIsClusteringLoading(false);
+        });
+      }
     }
     fetchClusteringData()
   }, [demoFile, isOnlyFallback])

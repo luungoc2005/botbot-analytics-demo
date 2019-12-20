@@ -1,13 +1,42 @@
 import axios from 'axios';
 import { stringify } from 'querystring';
+import io from 'socket.io-client'
 
-axios.defaults.baseURL = "http://127.0.0.1:5000/"
+const BASE_URL = "http://127.0.0.1:5000/"
+
+export const socket = io(BASE_URL)
+axios.defaults.baseURL = BASE_URL
+
+let tasks = []
+
+socket.on('connect', () => {
+  socket.emit('connected', JSON.stringify(tasks));
+  console.log('Client connected', socket)
+})
+
+socket.on('message', (...args) => console.log(...args))
+
+export const awaitTaskResult = (task_id, callback) => {
+  tasks.push(task_id)
+  const wrappedCallback = (data) => {
+    console.log(data)
+    const json_data = JSON.parse(data)
+    callback(json_data.data)
+    tasks = tasks.filter(item => item !== json_data.task_id)
+    if (json_data.task_id === task_id) {
+      socket.off('message', wrappedCallback);
+    }
+  }
+  socket.on('message', wrappedCallback);
+}
 
 export const AnalyticsAPI = {
   getDemoList: () => axios.get('/demo_list'),
+  getDemoTrainingList: () => axios.get('/demo_training_list'),
   getClusteringVisualize: (params = {
       file: '',
       only_fallback: false,
+      sid: '',
     }) => axios.get(`/clustering_visualize?${stringify(params)}`),
   getIntentsList: (params = {
       file: '',
@@ -32,4 +61,9 @@ export const AnalyticsAPI = {
     period: 'D',
     intents: '',
   }) => axios.get(`/intents_trend?${stringify(params)}`),
+  getSimilarWords: (params = {
+    file: '',
+    word: '',
+    top_n: 10,
+  }) => axios.get(`/top_similar_words?${stringify(params)}`),
 }

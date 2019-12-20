@@ -1,10 +1,13 @@
 from .ignore_lists import MESSAGE_IGNORE_LIST
-from underthesea import word_tokenize
+from underthesea import word_tokenize as vi_word_tokenize
+from nltk.tokenize import word_tokenize as en_word_tokenize
 
 import numpy as np
 import fasttext
 
-model = fasttext.load_model('data/cc.vi.300.bin')
+import os
+
+model = None
 
 def get_text_list_from_df(df, is_in=None, is_not_in=None):
     df_tmp = df.copy()
@@ -18,15 +21,35 @@ def get_text_list_from_df(df, is_in=None, is_not_in=None):
         if text not in MESSAGE_IGNORE_LIST
         and len(text.strip()) > 0
     ]
-    text_list = [word_tokenize(' '.join(text.split())) for text in text_list]
+
+    return tokenize_text_list(text_list)
+
+def tokenize_text_list(input_list):
+    if os.environ.get('LANGUAGE', 'en').lower() == 'en':
+        text_list = [en_word_tokenize(' '.join(text.split())) for text in input_list]
+    else:
+        # Vietnamese
+        text_list = [vi_word_tokenize(' '.join(text.split())) for text in input_list]
     return text_list
 
 def get_sentence_vectors(text_list):
     vectors = [
         np.average(
-            np.array([model.get_word_vector(word) for word in sentence])
+            np.array([get_word_vector(word) for word in sentence])
         , axis=0)
         for sentence in text_list
         if len(sentence) > 0
     ]
     return np.array(vectors)
+
+def get_word_vector(word):
+    global model
+    if model is None:
+        if os.environ.get('LANGUAGE', 'en').lower() == 'en':
+            print('Loading English word vectors')
+            model = fasttext.load_model('data/cc.en.300.bin')
+        else:
+            print('Loading Vietnamese word vectors')
+            model = fasttext.load_model('data/cc.vi.300.bin')
+
+    return model.get_word_vector(word)

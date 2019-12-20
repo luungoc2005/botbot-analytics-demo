@@ -1,5 +1,6 @@
-from ..app import app, DATA_DIR
-from ..common import cache, utils, vn_utils, ignore_lists
+from main_app import DATA_DIR
+from routes.history_routes import history_routes_blueprint
+from common import cache, utils, vn_utils, ignore_lists
 
 import pandas as pd
 import numpy as np
@@ -10,7 +11,7 @@ from os import listdir, path
 
 import string
 
-@app.route('/intents_trend')
+@history_routes_blueprint.route('/intents_trend')
 def intents_trend():
     file_name = request.args.get("file", "")
     # only = request.args.get("only", "").split(",")
@@ -39,13 +40,13 @@ def intents_trend():
         tmp_df['Intent'] = tmp_df.apply(lambda x: x['Intent'].lower().strip(), axis=1)
         tmp_df = tmp_df[tmp_df['Intent'] == intent]
         
-        intent_result = tmp_df.groupby(df.index.to_period(period)).count()[['Intent']]
+        intent_result = tmp_df.groupby(tmp_df.index.to_period(period)).count()[['Intent']]
         intent_result.index = pd.to_datetime(intent_result.index.to_timestamp())
         intent_result.index = intent_result.apply(lambda x: x.index.strftime("%Y-%m-%d %H:%M:%S"))
 
         data_series = {
             'x': [item[0] for item in intent_result.index],
-            'y': list(intent_result['Count']),
+            'y': list(intent_result['Intent']),
             'type': 'scatter',
             'name': f'"{intent}" triggers'
         }

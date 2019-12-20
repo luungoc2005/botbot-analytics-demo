@@ -80,6 +80,7 @@ export const TrendsKeywordsPage = () => {
   const [ intentsData, setIntentsData ] = useState([]);
   const [ topWordsData, setTopWordsData ] = useState([]);
   const [ wordsTrendData, setWordsTrendData ] = useState(null);
+  const [ similarWordsData, setSimilarWordsData ] = useState([]);
 
   const _wordsChartContainerElement = useRef();
 
@@ -138,6 +139,34 @@ export const TrendsKeywordsPage = () => {
     }
     fetchWordsTrendData();
   }, [demoFile, selectedWords, selectedPeriod])
+
+  useEffect(() => {
+    if (!demoFile) {
+      setWordsTrendData(null);
+      return;
+    }
+    const words = selectedWords
+      .filter(item => item.checked)
+      .map(item => item.text);
+
+    if (words.length === 0) {
+      return;
+    }
+     
+    const fetchSimilarWordsData = async () => {
+      const resp = await Promise.all(words.map(word => AnalyticsAPI.getSimilarWords({
+        file: demoFile,
+        word,
+        top_n: 5,
+      })))
+      console.log(resp);
+      setSimilarWordsData(resp.map((item, idx) => ({
+        word: words[idx],
+        data: item.data,
+      })))
+    }
+    fetchSimilarWordsData();
+  }, [demoFile, selectedWords])
 
   return (<Stack tokens={{
     childrenGap: 20,
@@ -249,6 +278,22 @@ export const TrendsKeywordsPage = () => {
         />}
       </div>
     </div>
+    </div>
+
+
+    <div className="ms-Grid-row">
+      {similarWordsData && similarWordsData.filter(item => item)
+        .map((item, idx) => <div className="ms-Grid-col ms-sm4" key={idx}>
+          <Text style={{ paddingTop: 20 }}>Most related to "{item.word}"</Text>
+          {item.data && <List
+            items={item.data}
+            onRenderCell={(word, word_idx) => <div data-is-focusable={true} key={word_idx}>
+              <div className={styles.itemContent}>
+                #{word_idx + 1}: {word}
+              </div>
+            </div>}
+          />}
+        </div>)}
     </div>
 
     </>}

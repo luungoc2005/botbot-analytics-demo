@@ -1,11 +1,12 @@
-from ..app import app, DATA_DIR
-from ..common import cache, utils, ignore_lists
+from main_app import DATA_DIR
+from routes.history_routes import history_routes_blueprint
+from common import cache, utils, ignore_lists
 
 from flask import jsonify, escape, request
 from werkzeug.exceptions import BadRequest
 from os import listdir, path
 
-@app.route('/top_intents')
+@history_routes_blueprint.route('/top_intents')
 def top_intents():
     file_name = request.args.get("file", "")
     only = request.args.get("only", "").split(',')

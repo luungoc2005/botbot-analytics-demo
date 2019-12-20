@@ -101,7 +101,7 @@ export const TrendsIntentsPage = () => {
     }
     const intents = intentsData
       .map(item => item.name)
-      .filter(item => intentSearchInput.indexOf(item) > 0)
+      .filter(item => intentSearchInput.indexOf(item) > -1)
 
     if (intents.length === 0) {
       return;

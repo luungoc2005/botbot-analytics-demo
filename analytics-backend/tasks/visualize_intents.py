@@ -1,8 +1,6 @@
-from ..app import app, DATA_DIR
-from ..common import cache, utils, ignore_lists
-from flask import jsonify, escape, request
-from werkzeug.exceptions import BadRequest
+from common import cache, utils, ignore_lists
 from os import listdir, path
+from main_app import DATA_DIR
 
 import pandas as pd
 import numpy as np
@@ -11,6 +9,17 @@ from sklearn.cluster import DBSCAN
 from sklearn.manifold import TSNE
 
 from typing import List, Tuple
+
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--file_name', type=str, default='')
+parser.add_argument('--only_fallback', type=str, default='')
+
+parser.add_argument("--callback_url", type=str, default='')
+parser.add_argument("--sid", type=str, default='')
+
+args = parser.parse_args()
 
 def visualize_matrix(X: np.array) -> Tuple[np.array, np.array]:
     y_pred = DBSCAN().fit_predict(X)
@@ -23,15 +32,14 @@ def visualize_matrix(X: np.array) -> Tuple[np.array, np.array]:
 
     return X_tsne, y_pred
 
-@app.route('/clustering_visualize')
-def clustering_visualize():
-    file_name = request.args.get("file", "")
-    only_fallback = request.args.get("only_fallback", "")
+if __name__ == '__main__':
+    print(args)
+
+    file_name = args.file_name
+    only_fallback = args.only_fallback
     only_fallback = only_fallback.lower() in ['1', 'true']
 
-    file_path = path.join(DATA_DIR, escape(file_name))
-    if not path.exists(file_path) or not path.isfile(file_path):
-        return BadRequest('File not found')
+    # file_path = path.join(DATA_DIR, file_name)
 
     df = cache.get_df_from_file(file_name)
 
@@ -73,7 +81,7 @@ def clustering_visualize():
         viz_groups[item_group]['y'].append(float(X_tsne[i, 1]))
         viz_groups[item_group]['text'].append(' '.join(text_list[i]))
     
-    return jsonify({
+    response = {
         'data': list(viz_groups.values()),
         'layout': {
             'xaxis': {
@@ -84,4 +92,17 @@ def clustering_visualize():
             },
             'title':'Grouped messages from users'
         }
-    })
+    }
+
+    if args.callback_url.strip() != '':
+        # from urllib import request, parse
+        import requests
+        import json
+
+        print('Sending POST request to', args.callback_url)
+        # data = json.dumps(response).encode('utf8')
+        request_obj = requests.post(
+            args.callback_url,
+            data=json.dumps(response)
+        )
+        # request.urlopen(request_obj)

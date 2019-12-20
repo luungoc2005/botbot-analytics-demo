@@ -16,7 +16,7 @@ export const Navigation = () => {
     }}
     groups={[
       {
-        name: 'Analytics',
+        name: 'Content Analytics',
         links: [
           {
             name: 'Clustering',
@@ -40,6 +40,15 @@ export const Navigation = () => {
               }
             ]
           },
+        ]
+      },
+      {
+        name: 'Training',
+        links: [
+          {
+            name: 'Training Data',
+            url: '/training',
+          }
         ]
       }
     ]}
