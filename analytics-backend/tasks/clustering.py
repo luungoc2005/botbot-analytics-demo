@@ -25,7 +25,7 @@ def visualize_matrix(X: np.array) -> Tuple[np.array, np.array]:
     y_pred = DBSCAN().fit_predict(X)
 
     print("Analysing with t-SNE...")
-    tsne = TSNE(n_components=2)
+    tsne = TSNE(n_components=3)
     X_tsne = tsne.fit_transform(X)
     x_min, x_max = np.min(X_tsne, 0), np.max(X_tsne, 0)
     X_tsne = (X_tsne - x_min) / (x_max - x_min)
@@ -68,17 +68,19 @@ if __name__ == '__main__':
             viz_groups[item_group] = {
                 'x': [],
                 'y': [],
+                'z': [],
                 'mode': 'markers',
-                'type': 'scatter',
+                'type': 'scatter3d',
                 'name': f'Cluster #{item_group}',
                 'text': [],
-                'marker': { 'size': 12 }
+                'marker': { 'size': 12, 'opacity': 0.8 }
             }
             if item_group == -1:
                 viz_groups[item_group]['name'] = '(noise)'
                 viz_groups[item_group]['marker']['color'] = 'black'
         viz_groups[item_group]['x'].append(float(X_tsne[i, 0]))
         viz_groups[item_group]['y'].append(float(X_tsne[i, 1]))
+        viz_groups[item_group]['z'].append(float(X_tsne[i, 2]))
         viz_groups[item_group]['text'].append(' '.join(text_list[i]))
     
     response = {
@@ -88,6 +90,9 @@ if __name__ == '__main__':
                 'range': [0, 1]
             },
             'yaxis': {
+                'range': [0, 1]
+            },
+            'zaxis': {
                 'range': [0, 1]
             },
             'title':'Grouped messages from users'

@@ -14,11 +14,11 @@ socketio = SocketIO(app, cors_allowed_origins='*', message_queue='redis://')
 
 from routes.common_routes import common_routes_blueprint
 from routes.history_routes import history_routes_blueprint
+from routes.training_routes import training_routes_blueprint
 
 app.register_blueprint(common_routes_blueprint)
 app.register_blueprint(history_routes_blueprint)
-
-import routes.demo_training_list
+app.register_blueprint(training_routes_blueprint)
 
 import json
 clients = []

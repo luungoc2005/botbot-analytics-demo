@@ -21,6 +21,8 @@ parser.add_argument("--sid", type=str, default='')
 args = parser.parse_args()
 
 if __name__ == '__main__':
+    print(args)
+
     file_name = args.file_name
 
     file_path = path.join(DATA_DIR, file_name)
@@ -43,11 +45,12 @@ if __name__ == '__main__':
     X_train = utils.get_sentence_vectors(raw_exampes_tokens)
     y_train = le.fit_transform(raw_labels)
 
-    clf = MLPClassifier( \
+    clf = MLPClassifier(
         hidden_layer_sizes=(50,), 
         random_state=1,
-        batch_size=min(32, len(X_train))
-        max_iter=100)
+        batch_size=min(32, len(X_train)),
+        max_iter=5,
+        verbose=True)
 
     clf.fit(X_train, y_train)
 
@@ -55,15 +58,31 @@ if __name__ == '__main__':
 
     response = {
         'results_overall': {
-            'accuracy': accuracy_score(y_train, preds),
-            'recall': recall_score(y_train, preds),
-            'precision': precision_score(y_train, preds),
-            'f1': f1_score(y_train, preds, average="weighted")
+            # 'accuracy': accuracy_score(y_train, preds),
+            'recall': recall_score(y_train, preds, average="micro"),
+            'precision': precision_score(y_train, preds, average="micro"),
+            'f1': f1_score(y_train, preds, average="micro")
         }
     }
 
-    response['results_intents'] = []
-    # for intent in le.classes_:
-        # TODO
+    results_intents = []
+    for class_idx, class_name in enumerate(le.classes_):
+        class_mask = (y_train == class_idx)
+
+        preds_class = preds[class_mask]
+        y_class = y_train[class_mask]
+        
+        y_class[y_class != class_idx] = -1
+        preds_class[preds_class != class_idx] = -1
+
+        results_intents.append({
+            'name': class_name,
+            'accuracy': accuracy_score(y_class, preds_class),
+            'recall': recall_score(y_class, preds_class, pos_label=class_idx),
+            'precision': precision_score(y_class, preds_class, pos_label=class_idx),
+            'f1': f1_score(y_class, preds_class, pos_label=class_idx)
+        })
+    
+    response['results_intents'] = results_intents
 
     print(json.dumps(response, indent=4))

@@ -1,5 +1,5 @@
 import pandas as pd
-from main_app import DATA_DIR
+from config import DATA_DIR
 from os import path
 
 CACHE = dict()

@@ -1,4 +1,4 @@
-from main_app import DATA_DIR
+from config import DATA_DIR
 from routes.history_routes import history_routes_blueprint
 from common import cache, utils, vn_utils, ignore_lists
 

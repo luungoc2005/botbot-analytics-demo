@@ -1,4 +1,4 @@
-from main_app import DATA_DIR, socketio, app
+from config import DATA_DIR, socketio, app
 from routes.common_routes import common_routes_blueprint
 
 from common import cache, utils, vn_utils, ignore_lists, task_scheduler

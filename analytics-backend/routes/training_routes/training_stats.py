@@ -1,4 +1,5 @@
-from main_app import app, DATA_DIR
+from config import DATA_DIR
+from routes.training_routes import training_routes_blueprint
 from common import cache, utils, ignore_lists
 
 from flask import jsonify, escape, request
@@ -12,7 +13,7 @@ from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_sc
 
 import json
 
-@app.route('/training_stats')
+@training_routes_blueprint.route('/training_stats')
 def training_stats():
     file_name = request.args.get("file", "")
     

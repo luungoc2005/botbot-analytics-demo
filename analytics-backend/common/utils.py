@@ -34,7 +34,7 @@ def tokenize_text_list(input_list):
 def get_sentence_vectors(text_list):
     vectors = [
         np.average(
-            np.array([get_word_vector(word) for word in sentence])
+            np.array(get_word_vector([word.replace(' ', '') for word in sentence]))
         , axis=0)
         for sentence in text_list
         if len(sentence) > 0
@@ -63,4 +63,6 @@ def get_word_vector(word):
             print('Loading Vietnamese word vectors')
             model = Magnitude('data/cc.vi.300.magnitude', language='vi', lazy_loading=20000)
         
-    return model.query(word.replace(' ', '_'))
+        print('Loading completed')
+
+    return model.query(word)

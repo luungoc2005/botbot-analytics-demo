@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     words = list(set(words))
     vectors = [utils.get_word_vector(word) for word in words]
-    query_vector = utils.get_word_vector(query_word)
+    query_vector = utils.get_word_vector(query_word.replace(' ', '_'))
 
     similarity = np.dot(query_vector, np.vstack(vectors).T)
     indices = np.argsort(similarity)[::-1]
