@@ -14,20 +14,27 @@ socket.on('connect', () => {
   console.log('Client connected', socket)
 })
 
-socket.on('message', (...args) => console.log(...args))
+// socket.on('message', (...args) => console.log(...args))
 
 export const awaitTaskResult = (task_id, callback) => {
   tasks.push(task_id)
   const wrappedCallback = (data) => {
-    console.log(data)
     const json_data = JSON.parse(data)
-    callback(json_data.data)
-    tasks = tasks.filter(item => item !== json_data.task_id)
     if (json_data.task_id === task_id) {
+      if (tasks.indexOf(json_data.task_id) > -1) 
+        callback(json_data.data)
+      
+      tasks = tasks.filter(item => item !== task_id)
       socket.off('message', wrappedCallback);
     }
   }
   socket.on('message', wrappedCallback);
+
+  return () => {
+    console.log(`Canceling task_id: ${task_id}`)
+    tasks = tasks.filter(item => item !== task_id)
+    socket.off('message', wrappedCallback); 
+  }
 }
 
 export const AnalyticsAPI = {
@@ -50,6 +57,7 @@ export const AnalyticsAPI = {
     file: '',
     only: '',
     top_n: 10,
+    sid: '',
   }) => axios.get(`/top_words?${stringify(params)}`),
   getWordsTrend: (params = {
     file: '',

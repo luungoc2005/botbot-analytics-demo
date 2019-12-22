@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useRef } from 'react';
 
 import { ChoiceGroup } from 'office-ui-fabric-react/lib/ChoiceGroup';
 // import { ProgressIndicator } from 'office-ui-fabric-react/lib/ProgressIndicator';
@@ -19,6 +19,7 @@ export const ClusteringPage = () => {
   const [ isOnlyFallback, setIsOnlyFallback ] = useState(true);
   const [ clusteringData, setClusteringData ] = useState(null);
   const [ isClusteringLoading, setIsClusteringLoading ] = useState(false);
+  const _chartContainerElement = useRef();
 
   useEffect(() => {
     if (!demoFile) {
@@ -75,23 +76,29 @@ export const ClusteringPage = () => {
       description="Visualizing your data" 
     />} */}
 
-    {isClusteringLoading && 
-      <Spinner 
-        label="Visualizing your data..." 
-        ariaLive="assertive" 
-        labelPosition="left"
-        style={{
-          justifyContent: 'left'
+    <div ref={_chartContainerElement}>
+      {isClusteringLoading && 
+        <Spinner 
+          label="Visualizing your data. This might take a while..." 
+          ariaLive="assertive" 
+          labelPosition="left"
+          style={{
+            justifyContent: 'left'
+          }}
+        />}
+
+      {clusteringData && <Plot
+        data={clusteringData.data}
+        layout={{
+          width: _chartContainerElement.current ? _chartContainerElement.current.clientWidth : 400,
+          height: _chartContainerElement.current ? _chartContainerElement.current.clientWidth * .75 : 300,
+          ...clusteringData.layout
+        }}
+        config={{
+          responsive: true
         }}
       />}
-
-    {clusteringData && <div><Plot
-      data={clusteringData.data}
-      layout={clusteringData.layout}
-      config={{
-        responsive: true
-      }}
-    /></div>}
+    </div>
   </Stack>
 }
 

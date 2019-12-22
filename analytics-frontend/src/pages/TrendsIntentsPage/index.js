@@ -116,7 +116,7 @@ export const TrendsIntentsPage = () => {
       setIntentsTrendData(resp.data);
     }
     fetchIntentsTrendData();
-  }, [demoFile, intentSearchInput, selectedPeriod])
+  }, [demoFile, intentSearchInput, selectedPeriod, intentsData])
 
   return (<Stack tokens={{
     childrenGap: 20,

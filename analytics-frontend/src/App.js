@@ -56,7 +56,9 @@ function App() {
       }}>
         <div className="ms-Grid" dir="ltr">
           <div className="ms-Grid-row">
-            <div className="ms-Grid-col ms-sm3"><Navigation /></div>
+            <div className="ms-Grid-col ms-sm3">
+              <Navigation />
+            </div>
             <div className="ms-Grid-col ms-sm9">
               <Switch>
                 <Route exact path="/" component={HomePage} />

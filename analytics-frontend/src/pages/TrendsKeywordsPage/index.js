@@ -3,13 +3,13 @@ import React, { useContext, useEffect, useState, useRef, useMemo } from 'react';
 import { ChoiceGroup } from 'office-ui-fabric-react/lib/ChoiceGroup';
 // import { ProgressIndicator } from 'office-ui-fabric-react/lib/ProgressIndicator';
 import { Text } from 'office-ui-fabric-react/lib/Text';
-// import { Spinner } from 'office-ui-fabric-react/lib/Spinner';
+import { Spinner } from 'office-ui-fabric-react/lib/Spinner';
 import { Stack } from 'office-ui-fabric-react/lib/Stack';
 // import { Label } from 'office-ui-fabric-react/lib/Label';
 // import { DetailsList, Selection } from 'office-ui-fabric-react/lib/DetailsList';
 import { List } from 'office-ui-fabric-react/lib/List';
 import { Checkbox } from 'office-ui-fabric-react/lib/Checkbox';
-import { Callout } from 'office-ui-fabric-react/lib/Callout';
+// import { Callout } from 'office-ui-fabric-react/lib/Callout';
 import { DefaultButton } from 'office-ui-fabric-react/lib/Button';
 // import { TextField } from 'office-ui-fabric-react/lib/TextField';
 import { ComboBox } from 'office-ui-fabric-react/lib/ComboBox';
@@ -21,7 +21,7 @@ import { DemoFileSelector } from '../../components/DemoFileSelector';
 import Plot from 'react-plotly.js'
 
 import { AppContext } from '../../context';
-import { AnalyticsAPI } from '../../api';
+import { AnalyticsAPI, awaitTaskResult, socket } from '../../api';
 
 const theme = getTheme();
 
@@ -83,6 +83,7 @@ export const TrendsKeywordsPage = () => {
   const [ similarWordsData, setSimilarWordsData ] = useState([]);
 
   const _wordsChartContainerElement = useRef();
+  const _pendingTasks = useRef([])
 
   useEffect(() => {
     if (!demoFile) {
@@ -110,6 +111,7 @@ export const TrendsKeywordsPage = () => {
           .map(item => item.name)
           .join(','),
         top_n: 50,
+        sid: socket.id,
       })
       setTopWordsData(resp.data);
     }
@@ -153,17 +155,34 @@ export const TrendsKeywordsPage = () => {
       return;
     }
      
+    _pendingTasks.current.forEach(cancelTask => cancelTask())
+    _pendingTasks.current = []
+
+    let newData = words.map(word => ({ word, task_id: null }));
+
     const fetchSimilarWordsData = async () => {
-      const resp = await Promise.all(words.map(word => AnalyticsAPI.getSimilarWords({
-        file: demoFile,
-        word,
-        top_n: 5,
-      })))
-      console.log(resp);
-      setSimilarWordsData(resp.map((item, idx) => ({
-        word: words[idx],
-        data: item.data,
-      })))
+      setSimilarWordsData(newData);
+
+      words.forEach(async (word, word_idx) => {
+        const resp = await AnalyticsAPI.getSimilarWords({
+          file: demoFile,
+          word,
+          top_n: 5,
+          sid: socket.id
+        })
+        const task_id = resp.data.task_id
+        if (task_id) {
+          newData[word_idx].task_id = task_id;
+          const cancelTask = awaitTaskResult(task_id, (task_resp) => {
+            newData[word_idx].data = task_resp;
+            console.log(task_id, task_resp);
+            if (newData.filter(item => item && item.data).length === words.length) {
+              setSimilarWordsData(newData);
+            }
+          });
+          _pendingTasks.current.push(cancelTask)
+        }
+      })
     }
     fetchSimilarWordsData();
   }, [demoFile, selectedWords])
@@ -284,15 +303,26 @@ export const TrendsKeywordsPage = () => {
     <div className="ms-Grid-row">
       {similarWordsData && similarWordsData.filter(item => item)
         .map((item, idx) => <div className="ms-Grid-col ms-sm4" key={idx}>
-          <Text style={{ paddingTop: 20 }}>Most related to "{item.word}"</Text>
-          {item.data && <List
-            items={item.data}
-            onRenderCell={(word, word_idx) => <div data-is-focusable={true} key={word_idx}>
-              <div className={styles.itemContent}>
-                #{word_idx + 1}: {word}
-              </div>
-            </div>}
-          />}
+          <Stack tokens={{
+            childrenGap: 20,
+          }}>
+            <Text style={{ paddingTop: 20 }}>
+              Most related to "{item.word}"
+            </Text>
+            {item.data
+            ? <List
+                items={item.data}
+                onRenderCell={(word, word_idx) => <div data-is-focusable={true} key={word_idx}>
+                  <div className={styles.itemContent}>
+                    #{word_idx + 1}: {word}
+                  </div>
+                </div>}
+              />
+            : <Spinner 
+                label="Loading..." 
+                ariaLive="assertive"
+              />}
+            </Stack>
         </div>)}
     </div>
 
