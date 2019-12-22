@@ -1,8 +1,6 @@
-from main_app import app, DATA_DIR
+from config import DATA_DIR
 from common import cache, utils, ignore_lists
 
-from flask import jsonify, escape, request
-from werkzeug.exceptions import BadRequest
 from os import listdir, path
 
 import numpy as np
@@ -12,13 +10,20 @@ from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_sc
 
 import json
 
-@app.route('/training_stats')
-def training_stats():
-    file_name = request.args.get("file", "")
-    
-    file_path = path.join(DATA_DIR, escape(file_name))
-    if not path.exists(file_path) or not path.isfile(file_path):
-        return BadRequest('File not found')
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--file_name', type=str, default='')
+
+parser.add_argument("--callback_url", type=str, default='')
+parser.add_argument("--sid", type=str, default='')
+
+args = parser.parse_args()
+
+if __name__ == '__main__':
+    file_name = args.file_name
+
+    file_path = path.join(DATA_DIR, file_name)
 
     with open(file_path, 'r') as input_file:
         training_file = json.load(input_file)
@@ -38,7 +43,7 @@ def training_stats():
     X_train = utils.get_sentence_vectors(raw_exampes_tokens)
     y_train = le.fit_transform(raw_labels)
 
-    clf = MLPClassifier(
+    clf = MLPClassifier( \
         hidden_layer_sizes=(50,), 
         random_state=1,
         batch_size=min(32, len(X_train))
@@ -58,5 +63,7 @@ def training_stats():
     }
 
     response['results_intents'] = []
-    for intent in le.classes_:
+    # for intent in le.classes_:
         # TODO
+
+    print(json.dumps(response, indent=4))

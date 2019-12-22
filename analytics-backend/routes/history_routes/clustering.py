@@ -37,7 +37,7 @@ def clustering_visualize():
         return BadRequest('File not found')
 
     return jsonify({
-        'task_id': task_scheduler.run_task('tasks.visualize_intents', [
+        'task_id': task_scheduler.run_task('tasks.clustering', [
             '--file_name', file_name,
             '--only_fallback', only_fallback
         ], request.url_root, sid)

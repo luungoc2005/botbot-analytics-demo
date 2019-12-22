@@ -1,5 +1,5 @@
-# from gevent import monkey
-# monkey.patch_all()
+from gevent import monkey
+monkey.patch_all()
 
 from flask import Flask, Blueprint, request
 from flask_cors import CORS
@@ -10,7 +10,7 @@ from config import LOGS_DIR, DATA_DIR
 
 app = Flask(__name__)
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins='*')
+socketio = SocketIO(app, cors_allowed_origins='*', message_queue='redis://')
 
 from routes.common_routes import common_routes_blueprint
 from routes.history_routes import history_routes_blueprint

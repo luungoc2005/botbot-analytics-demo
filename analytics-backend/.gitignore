@@ -129,5 +129,7 @@ dmypy.json
 .pyre/
 
 *.bin
+*.vec
+*.magnitude
 
 logs/

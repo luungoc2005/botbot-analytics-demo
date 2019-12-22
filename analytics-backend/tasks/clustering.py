@@ -1,6 +1,6 @@
 from common import cache, utils, ignore_lists
 from os import listdir, path
-from main_app import DATA_DIR
+from config import DATA_DIR
 
 import pandas as pd
 import numpy as np

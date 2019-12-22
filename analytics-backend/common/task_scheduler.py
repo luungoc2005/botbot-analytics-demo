@@ -33,3 +33,10 @@ def run_task(task_name, args, url_root, sid):
         TASK_PROCESSES[task_id] = subprocess.Popen(task_args, stdout=log_fp)
 
     return task_id
+
+
+def cancel_task(task_id):
+    global TASK_PROCESSES
+    global TASK_TARGETS
+
+    # TODO: implement this

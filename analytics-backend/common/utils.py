@@ -3,7 +3,6 @@ from underthesea import word_tokenize as vi_word_tokenize
 from nltk.tokenize import word_tokenize as en_word_tokenize
 
 import numpy as np
-import fasttext
 
 import os
 
@@ -45,11 +44,23 @@ def get_sentence_vectors(text_list):
 def get_word_vector(word):
     global model
     if model is None:
+        # import fasttext
+        # if os.environ.get('LANGUAGE', 'en').lower() == 'en':
+        #     print('Loading English word vectors')
+        #     model = fasttext.load_model('data/cc.en.300.bin')
+        # else:
+        #     print('Loading Vietnamese word vectors')
+        #     model = fasttext.load_model('data/cc.vi.300.bin')
+
+    # return model.get_word_vector(word.replace(' ', '_'))
+    
+        from pymagnitude import Magnitude
+
         if os.environ.get('LANGUAGE', 'en').lower() == 'en':
             print('Loading English word vectors')
-            model = fasttext.load_model('data/cc.en.300.bin')
+            model = Magnitude('data/cc.en.300.magnitude', language='en', lazy_loading=20000)
         else:
             print('Loading Vietnamese word vectors')
-            model = fasttext.load_model('data/cc.vi.300.bin')
-
-    return model.get_word_vector(word)
+            model = Magnitude('data/cc.vi.300.magnitude', language='vi', lazy_loading=20000)
+        
+    return model.query(word.replace(' ', '_'))
