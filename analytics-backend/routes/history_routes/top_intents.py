@@ -45,7 +45,8 @@ def top_intents():
                 'automargin': True
             }],
             'layout': {
-                'showlegend': False
+                'showlegend': False,
+                'displaylogo': False
             }
         }
     })

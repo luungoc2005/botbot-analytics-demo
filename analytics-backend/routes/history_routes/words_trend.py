@@ -61,6 +61,7 @@ def words_trend():
     return jsonify({
         'data': data,
         'layout': {
-            'title': 'Mentions over time'
+            'title': 'Mentions over time',
+            'displaylogo': False
         }
     })

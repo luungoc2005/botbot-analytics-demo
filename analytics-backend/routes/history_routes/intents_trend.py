@@ -56,6 +56,7 @@ def intents_trend():
     return jsonify({
         'data': data,
         'layout': {
-            'title': 'Triggers over time'
+            'title': 'Triggers over time',
+            'displaylogo': False
         }
     })

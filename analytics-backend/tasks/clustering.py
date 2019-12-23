@@ -95,7 +95,8 @@ if __name__ == '__main__':
             'zaxis': {
                 'range': [0, 1]
             },
-            'title':'Grouped messages from users'
+            'title':'Grouped messages from users',
+            'displaylogo': False
         }
     }
 
