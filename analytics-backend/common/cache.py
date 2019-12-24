@@ -1,9 +1,24 @@
 import pandas as pd
 from config import DATA_DIR
 from os import path
+import hashlib
 
 CACHE = dict()
 MAX_CACHE = 5
+
+def get_file_hash(file_name):
+    BUF_SIZE = 65536
+
+    md5 = hashlib.md5()
+
+    with open(file_name, 'rb') as f:
+        while True:
+            data = f.read(BUF_SIZE)
+            if not data:
+                break
+            md5.update(data)
+    
+    return str(md5.hexdigest())
 
 def get_df_from_file(file_name):
     try:

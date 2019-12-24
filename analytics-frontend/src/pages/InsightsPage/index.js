@@ -215,6 +215,7 @@ export const InsightsPage = () => {
               }}
               config={{
                 responsive: true,
+                displaylogo: false,
               }}
             /></div>}
 

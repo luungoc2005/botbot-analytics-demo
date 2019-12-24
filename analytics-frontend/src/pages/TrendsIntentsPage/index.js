@@ -188,7 +188,8 @@ export const TrendsIntentsPage = () => {
             ...intentsTrendData.layout
           }}
           config={{
-            responsive: true
+            responsive: true,
+            displaylogo: false,
           }}
         />}
       </div>

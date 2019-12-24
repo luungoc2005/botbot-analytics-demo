@@ -39,7 +39,6 @@ export const awaitTaskResult = (task_id, callback) => {
 
 export const AnalyticsAPI = {
   getDemoList: () => axios.get('/demo_list'),
-  getDemoTrainingList: () => axios.get('/demo_training_list'),
   getClusteringVisualize: (params = {
       file: '',
       only_fallback: false,
@@ -74,4 +73,10 @@ export const AnalyticsAPI = {
     word: '',
     top_n: 10,
   }) => axios.get(`/top_similar_words?${stringify(params)}`),
+
+  getDemoTrainingList: () => axios.get('/demo_training_list'),
+  getTrainingStats: (params = {
+    file: '',
+    sid: '',
+  }) => axios.get(`/training_stats?${stringify(params)}`)
 }

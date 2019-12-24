@@ -46,7 +46,7 @@ export const Navigation = () => {
         name: 'Training',
         links: [
           {
-            name: 'Training Data',
+            name: 'Data Analysis',
             url: '/training',
           }
         ]

@@ -25,7 +25,7 @@ def visualize_matrix(X: np.array) -> Tuple[np.array, np.array]:
     y_pred = DBSCAN().fit_predict(X)
 
     print("Analysing with t-SNE...")
-    tsne = TSNE(n_components=3)
+    tsne = TSNE(n_components=3, learning_rate=50)
     X_tsne = tsne.fit_transform(X)
     x_min, x_max = np.min(X_tsne, 0), np.max(X_tsne, 0)
     X_tsne = (X_tsne - x_min) / (x_max - x_min)

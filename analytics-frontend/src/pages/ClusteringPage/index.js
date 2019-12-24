@@ -95,7 +95,8 @@ export const ClusteringPage = () => {
           ...clusteringData.layout
         }}
         config={{
-          responsive: true
+          responsive: true,
+          displaylogo: false,
         }}
       />}
     </div>

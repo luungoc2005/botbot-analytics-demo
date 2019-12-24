@@ -133,3 +133,4 @@ dmypy.json
 *.magnitude
 
 logs/
+_cache/

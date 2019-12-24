@@ -292,7 +292,8 @@ export const TrendsKeywordsPage = () => {
             ...wordsTrendData.layout
           }}
           config={{
-            responsive: true
+            responsive: true,
+            displaylogo: false,
           }}
         />}
       </div>
