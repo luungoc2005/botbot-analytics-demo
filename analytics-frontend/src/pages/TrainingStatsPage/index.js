@@ -42,7 +42,7 @@ const problemsData = {
   },
   'similar_intents': {
     title: 'Similar Intents',
-    description: 'Some intents are too similar and easily mixed up by the model. Consider assigning contexts or merging these intents together.'
+    description: 'Some intents are too similar or not very well-defined and therefore, easily mixed up by the model. Consider assigning contexts or merging these intents together.'
   }
 }
 
