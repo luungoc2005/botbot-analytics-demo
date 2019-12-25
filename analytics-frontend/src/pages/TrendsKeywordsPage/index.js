@@ -13,8 +13,6 @@ import { Checkbox } from 'office-ui-fabric-react/lib/Checkbox';
 import { DefaultButton } from 'office-ui-fabric-react/lib/Button';
 // import { TextField } from 'office-ui-fabric-react/lib/TextField';
 import { ComboBox } from 'office-ui-fabric-react/lib/ComboBox';
-import { Dialog, DialogType, DialogFooter } from 'office-ui-fabric-react/lib/Dialog';
-import { DetailsList } from 'office-ui-fabric-react/lib/DetailsList';
 
 import { mergeStyleSets, getTheme, normalize } from 'office-ui-fabric-react/lib/Styling';
 
@@ -77,7 +75,6 @@ export const TrendsKeywordsPage = () => {
   const [ wordSearchInput, setWordSearchInput ] = useState('');
   const [ selectedWords, setSelectedWords ] = useState([]);
   const [ selectedPeriod, setSelectedPeriod ] = useState('D');
-  const [ problemIntentListData, setProblemIntentListData ] = useState(null);
 
   // data states
   const [ intentsData, setIntentsData ] = useState([]);
@@ -304,27 +301,6 @@ export const TrendsKeywordsPage = () => {
     </div>
     </div>
 
-    {problemIntentListData && <DetailsList 
-      items={problemIntentListData}
-      columns={[
-        {
-          key: 'text',
-          name: 'Text',
-        },
-        {
-          key: 'predicted',
-          name: 'Predicted',
-        },
-        {
-          key: 'confidence',
-          name: 'Confidence', 
-          onRender: (item) => (<span>
-            {`${Math.round(item.confidence * 10000) / 100}`}
-          </span>)
-        }
-      ]}
-    />}
-
     <div className="ms-Grid-row">
       {similarWordsData && similarWordsData.filter(item => item)
         .map((item, idx) => <div className="ms-Grid-col ms-sm4" key={idx}>
@@ -337,7 +313,10 @@ export const TrendsKeywordsPage = () => {
             {item.data
             ? <List
                 items={item.data}
-                onRenderCell={(word, word_idx) => <div data-is-focusable={true} key={word_idx}>
+                onRenderCell={(word, word_idx) => <div 
+                  data-is-focusable={true} 
+                  key={word_idx}
+                >
                   <div className={styles.itemContent}>
                     #{word_idx + 1}: {word}
                   </div>

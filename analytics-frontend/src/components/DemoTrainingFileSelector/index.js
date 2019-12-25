@@ -88,7 +88,7 @@ export const DemoTrainingFileSelector = ({ onDemoFileClick = null }) => {
           toggle
           checked={Boolean(demoTrainingFile === item)}
           style={{ padding: 0 }}
-          onClick={() => onDemoFileClick && onDemoFileClick(item)}
+          onClick={() => onDemoFileClick && onDemoFileClick(item.name)}
           className={classNames.listGridExampleTile}
           data-is-focusable={true}
           style={{
@@ -101,7 +101,7 @@ export const DemoTrainingFileSelector = ({ onDemoFileClick = null }) => {
               <img className={classNames.listGridExampleImage} />
               <span className={classNames.listGridExampleLabel}>
                 <Text variant="tiny">
-                  {item}
+                  {item.name}
                 </Text>
               </span>
             </div>

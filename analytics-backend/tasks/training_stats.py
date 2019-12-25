@@ -1,5 +1,5 @@
 from config import DATA_DIR, CACHE_DIR
-from common import cache, utils, ignore_lists
+from common import cache, utils, ignore_lists, dialogflow
 
 from os import listdir, path, makedirs
 
@@ -56,10 +56,14 @@ if __name__ == '__main__':
     #     return_response(args, response)
     #     exit()
 
-    with open(file_path, 'r') as input_file:
-        training_file = json.load(input_file)
+    if file_path.lower()[-5:] == '.json':
+        with open(file_path, 'r') as input_file:
+            training_file = json.load(input_file)
+    else:
+        training_file = dialogflow.load_dialogflow_archive(file_path)
 
     # extract raw intents and labels from file. Needs upgrade
+    # TODO: support contexts & priority
     raw_examples = []
     raw_labels = []
     examples_counts = {}

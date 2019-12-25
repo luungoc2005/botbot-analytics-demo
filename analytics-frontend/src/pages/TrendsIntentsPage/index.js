@@ -184,7 +184,7 @@ export const TrendsIntentsPage = () => {
           data={intentsTrendData.data}
           layout={{
             width: _intentsChartContainerElement.current ? _intentsChartContainerElement.current.clientWidth : 400,
-            height: _intentsChartContainerElement.current ? _intentsChartContainerElement.current.clientWidth / 2 : 250,
+            height: _intentsChartContainerElement.current ? _intentsChartContainerElement.current.clientWidth * .33 : 250,
             ...intentsTrendData.layout
           }}
           config={{
