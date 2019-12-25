@@ -41,11 +41,13 @@ def load_dialogflow_archive(file_path):
                 intent_data = {
                     'name': intent_name,
                     'usersays': [],
-                    'contexts': []
+                    'contexts': [],
+                    'priority': 0
                 }
                 with zip_file.open(intent_main_file_name) as intent_file_fp:
                     intent_json = json.load(intent_file_fp)
                     intent_data['contexts'] = intent_json.get('contexts', [])
+                    intent_data['priority'] = intent_json.get('priority', 500000)
 
                 with zip_file.open(intent_file) as usersays_file_fp:
                     usersays_json = json.load(usersays_file_fp)

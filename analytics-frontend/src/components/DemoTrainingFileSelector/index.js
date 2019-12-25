@@ -14,13 +14,15 @@ const classNames = mergeStyleSets({
   listGridExample: {
     overflow: 'hidden',
     fontSize: 0,
-    position: 'relative',
+    position: 'relative',    
   },
   listGridExampleTile: {
     textAlign: 'center',
     outline: 'none',
     position: 'relative',
     float: 'left',
+    marginRight: 20,
+    marginBottom: 20,
     padding: 0,
     // background: palette.neutralLighter,
     selectors: {

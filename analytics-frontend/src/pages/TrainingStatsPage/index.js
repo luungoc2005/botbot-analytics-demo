@@ -244,7 +244,7 @@ export const TrainingStatsPage = () => {
           />
         </div>}
 
-        <Text variant="small">Suggested level: <Text variant="smallPlus">{Math.round(trainingStatsData.suggested_threshold * 100)}</Text></Text>
+        <Text variant="small">Suggested level: <Text variant="smallPlus">{'' + Math.round(trainingStatsData.suggested_threshold * 100)}</Text></Text>
       </div>
     </PivotItem>
 

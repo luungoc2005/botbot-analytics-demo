@@ -6,7 +6,7 @@ from os import listdir, path, makedirs
 import statistics
 from scipy import stats
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer, StandardScaler
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score
 
@@ -63,16 +63,28 @@ if __name__ == '__main__':
         training_file = dialogflow.load_dialogflow_archive(file_path)
 
     # extract raw intents and labels from file. Needs upgrade
-    # TODO: support contexts & priority
+    # TODO: support priority
     raw_examples = []
     raw_labels = []
+    raw_contexts = []
+    # raw_priorities = []
     examples_counts = {}
+    has_contexts = False
 
     for intent_idx, intent in enumerate(training_file):
         intent_name = intent['name']
-        for usersay in intent['usersays']:
-            raw_labels.append(intent_name)
-            raw_examples.append(usersay.strip())
+        intent_priority = intent.get('priority', 500000)
+
+        if intent_priority > 0:
+            for usersay in intent['usersays']:
+                raw_labels.append(intent_name)
+                raw_examples.append(usersay.strip())
+                contexts = intent.get('contexts', []) # this is optional
+                # raw_priorities.append([intent_priority])
+                if len(contexts) > 0:
+                    has_contexts = True
+                raw_contexts.append(contexts)
+
         examples_counts[intent_name] = len(intent['usersays'])
 
     raw_exampes_tokens = utils.tokenize_text_list(raw_examples)
@@ -87,6 +99,15 @@ if __name__ == '__main__':
     else:
         le = LabelEncoder()
         X_train = utils.get_sentence_vectors(raw_exampes_tokens)
+
+        if has_contexts:
+            print('Featurizing contexts')
+            mlb = MultiLabelBinarizer()
+            X_contexts = mlb.fit_transform(raw_contexts)
+            
+            X_train = np.concatenate([X_train, X_contexts], axis=1)
+            print(f'New input array shape: {X_train.shape}')
+
         y_train = le.fit_transform(raw_labels)
 
         clf = MLPClassifier(
@@ -335,7 +356,7 @@ if __name__ == '__main__':
             for intent_name in incorrect_results_set:
                 result_count = incorrect_results.count(intent_name)
 
-                if result_count >= (total_examples / 2):
+                if result_count >= (total_examples / 3):
                     similar_intents.append({
                         'name': intent['name'],
                         'similar_to': intent_name
