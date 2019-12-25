@@ -1,10 +1,13 @@
 from .ignore_lists import MESSAGE_IGNORE_LIST
 from underthesea import word_tokenize as vi_word_tokenize
 from nltk.tokenize import word_tokenize as en_word_tokenize
+from config import CACHE_DIR
+from os import path
 
 import numpy as np
 
 import os
+import json
 
 model = None
 
@@ -31,15 +34,34 @@ def tokenize_text_list(input_list):
         text_list = [vi_word_tokenize(' '.join(text.split())) for text in input_list]
     return text_list
 
-def get_sentence_vectors(text_list):
-    vectors = [
+def get_sentence_vectors(text_list, use_cache=True):
+    # hashing for cache
+    cache_file = None
+    if use_cache:
+        import hashlib
+        md5 = hashlib.md5()
+        data_str = json.dumps(text_list)
+        md5.update(data_str.encode('utf-8'))
+
+        cache_file = path.join(CACHE_DIR, f'vectors_{str(md5.hexdigest())}.npy')
+        print(cache_file)
+
+        if path.exists(cache_file) and path.isfile(cache_file):
+            print('Vector cache hit')
+            return np.load(cache_file)
+
+    vectors = np.array([
         np.average(
             np.array(get_word_vector([word.replace(' ', '') for word in sentence]))
         , axis=0)
         for sentence in text_list
         if len(sentence) > 0
-    ]
-    return np.array(vectors)
+    ])
+
+    if cache_file is not None:
+        np.save(cache_file, vectors)
+
+    return vectors
 
 def get_word_vector(word):
     global model

@@ -13,6 +13,8 @@ import { Checkbox } from 'office-ui-fabric-react/lib/Checkbox';
 import { DefaultButton } from 'office-ui-fabric-react/lib/Button';
 // import { TextField } from 'office-ui-fabric-react/lib/TextField';
 import { ComboBox } from 'office-ui-fabric-react/lib/ComboBox';
+import { Dialog, DialogType, DialogFooter } from 'office-ui-fabric-react/lib/Dialog';
+import { DetailsList } from 'office-ui-fabric-react/lib/DetailsList';
 
 import { mergeStyleSets, getTheme, normalize } from 'office-ui-fabric-react/lib/Styling';
 
@@ -75,6 +77,7 @@ export const TrendsKeywordsPage = () => {
   const [ wordSearchInput, setWordSearchInput ] = useState('');
   const [ selectedWords, setSelectedWords ] = useState([]);
   const [ selectedPeriod, setSelectedPeriod ] = useState('D');
+  const [ problemIntentListData, setProblemIntentListData ] = useState(null);
 
   // data states
   const [ intentsData, setIntentsData ] = useState([]);
@@ -175,9 +178,10 @@ export const TrendsKeywordsPage = () => {
           newData[word_idx].task_id = task_id;
           const cancelTask = awaitTaskResult(task_id, (task_resp) => {
             newData[word_idx].data = task_resp;
-            console.log(task_id, task_resp);
+            console.log(task_id, task_resp, newData, words.length);
+            console.log('filtered', newData.filter(item => item && item.data));
             if (newData.filter(item => item && item.data).length === words.length) {
-              setSimilarWordsData(newData);
+              setSimilarWordsData([...newData]);
             }
           });
           _pendingTasks.current.push(cancelTask)
@@ -300,6 +304,26 @@ export const TrendsKeywordsPage = () => {
     </div>
     </div>
 
+    {problemIntentListData && <DetailsList 
+      items={problemIntentListData}
+      columns={[
+        {
+          key: 'text',
+          name: 'Text',
+        },
+        {
+          key: 'predicted',
+          name: 'Predicted',
+        },
+        {
+          key: 'confidence',
+          name: 'Confidence', 
+          onRender: (item) => (<span>
+            {`${Math.round(item.confidence * 10000) / 100}`}
+          </span>)
+        }
+      ]}
+    />}
 
     <div className="ms-Grid-row">
       {similarWordsData && similarWordsData.filter(item => item)

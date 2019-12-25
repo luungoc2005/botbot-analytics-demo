@@ -27,9 +27,11 @@ def connected(message):
     global clients
     print("%s connected" % (request.sid))
     json_data = json.loads(message)
+    if len(json_data) > 0:
+        print(f"Client reclaiming {len(json_data)} tasks: {message}")
 
-    for task_id in json_data:
-        assign_task_target(task_id, request.sid)
+        for task_id in json_data:
+            assign_task_target(task_id, request.sid)
 
     socketio.send(json.dumps({ 'hello': 'world' }), room=request.sid)
 

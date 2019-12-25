@@ -68,7 +68,7 @@ if __name__ == '__main__':
         intent_name = intent['name']
         for usersay in intent['usersays']:
             raw_labels.append(intent_name)
-            raw_examples.append(usersay)
+            raw_examples.append(usersay.strip())
         examples_counts[intent_name] = len(intent['usersays'])
 
     raw_exampes_tokens = utils.tokenize_text_list(raw_examples)
@@ -203,6 +203,7 @@ if __name__ == '__main__':
             'accuracy': float(accuracy_score(y_class, preds_class)),
             'correct': int(np.sum(y_class == preds_class)),
             'incorrect': int(np.sum(y_class != preds_class)),
+            'total': int(np.sum(class_mask)),
             'problem_examples': []
         }
 
@@ -216,17 +217,18 @@ if __name__ == '__main__':
         gt_cls = y_train[diff_idx]
 
         results_intents[gt_cls]['problem_examples'].append({
-            'example': raw_examples[diff_idx],
+            'text': raw_examples[diff_idx],
             'predicted': le.classes_[pred_cls],
             'confidence': preds_proba[diff_idx][pred_cls]
-            # 'ground_truth': le.classes_[gt_cls]
+            # 'ground_truth': f'{le.classes_[gt_cls]} [{gt_cls}]'
         })
     
     # filter out items without issues
-    response['results_intents'] = [
+    results_intents = [
         item for item in results_intents
         if item['accuracy'] < 1.0
     ]
+    response['results_intents'] = results_intents
 
     # TODO: could be improved
     overall_intents_plot = {}
@@ -318,7 +320,34 @@ if __name__ == '__main__':
         })
 
     # similar intents
-    # TODO
+    similar_intents = []
+
+    for intent in results_intents:
+        total_examples = intent['total']
+        if intent['incorrect'] > intent['correct']:
+            incorrect_results = [item['predicted'] for item in intent['problem_examples']]
+            incorrect_results_set = set(incorrect_results)
+
+            for intent_name in incorrect_results_set:
+                result_count = incorrect_results.count(intent_name)
+
+                if result_count >= (total_examples / 2):
+                    similar_intents.append({
+                        'name': intent['name'],
+                        'similar_to': intent_name
+                    })
+                    break
+    
+    if len(similar_intents) > 0:
+        problems.append({
+            'name': 'similar_intents',
+            'intents': [
+                f'{item["name"]} (similar to "{item["similar_to"]}")'
+                for item in similar_intents
+            ]
+        })
+
+    response['similar_intents'] = similar_intents
     
     response['problems'] = problems
 

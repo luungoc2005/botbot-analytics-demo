@@ -10,12 +10,16 @@ import { Stack } from 'office-ui-fabric-react/lib/Stack';
 import { List } from 'office-ui-fabric-react/lib/List';
 // import { Checkbox } from 'office-ui-fabric-react/lib/Checkbox';
 // import { Callout } from 'office-ui-fabric-react/lib/Callout';
-// import { DefaultButton } from 'office-ui-fabric-react/lib/Button';
+import { DefaultButton } from 'office-ui-fabric-react/lib/Button';
 // import { TextField } from 'office-ui-fabric-react/lib/TextField';
 // import { ComboBox } from 'office-ui-fabric-react/lib/ComboBox';
 import { FocusZone } from 'office-ui-fabric-react/lib/FocusZone';
 import { Pivot, PivotItem } from 'office-ui-fabric-react/lib/Pivot';
 import { MessageBar, MessageBarType } from 'office-ui-fabric-react/lib/MessageBar';
+import { Dialog, DialogType, DialogFooter } from 'office-ui-fabric-react/lib/Dialog';
+import { DetailsList, SelectionMode, DetailsListLayoutMode } from 'office-ui-fabric-react/lib/DetailsList';
+import { TooltipHost, TooltipOverflowMode } from 'office-ui-fabric-react/lib/Tooltip';
+// import { useId } from '@uifabric/react-hooks';
 
 import { mergeStyleSets, getTheme, normalize, getFocusStyle } from 'office-ui-fabric-react/lib/Styling';
 
@@ -34,6 +38,10 @@ const problemsData = {
   'unbalanced_data': {
     title: 'Unbalanced Data',
     description: 'Some intents have too many or too few training examples. This might make the model biased towards or against these intents. Consider adding or removing redundant training examples'
+  },
+  'similar_intents': {
+    title: 'Similar Intents',
+    description: 'Some intents are too similar and easily mixed up by the model. Consider assigning contexts or merging these intents together.'
   }
 }
 
@@ -47,6 +55,11 @@ const classNames = mergeStyleSets({
       padding: 10,
       boxSizing: 'border-box',
       borderBottom: `1px solid ${theme.semanticColors.bodyDivider}`,
+      userSelect: 'none',
+      cursor: 'pointer',
+      selectors: {
+        '&:hover': { background: theme.palette.neutralLight }
+      },
     }
   ],
 })
@@ -56,6 +69,7 @@ export const TrainingStatsPage = () => {
 
   // component states
   const [ trainingStatsLoading, setTrainingStatsLoading ] = useState(false);
+  const [ problemIntentListData, setProblemIntentListData ] = useState(null);
 
   // data states
   const [ trainingStatsData, setTrainingStatsData ] = useState(null);
@@ -198,7 +212,7 @@ export const TrainingStatsPage = () => {
             <p>
               {problemsData[problem.name].description}
             </p>
-            {problem.intents && <><p>Affected Intents</p>
+            {problem.intents && <><p>Affected Intents ({problem.intents.length})</p>
             <ul>
               {problem.intents.map(problem_intent => <li key={problem_intent}>
                 {problem_intent}
@@ -252,6 +266,113 @@ export const TrainingStatsPage = () => {
           }}
         />
       </div>}
+      
+      <Dialog
+        hidden={Boolean(!problemIntentListData)}
+        onDismiss={() => setProblemIntentListData(null)}
+        dialogContentProps={{
+          type: DialogType.largeHeader,
+          title: problemIntentListData && problemIntentListData.name,
+          subText: 'The following examples are being misclassified. Consider changing or removing them'
+        }}
+        modalProps={{
+          isBlocking: false,
+          styles: { 
+            main: [{
+              selectors: {
+                  [""]: { // Apply at root 
+                      minWidth: '80vw'
+                  }
+              }
+            }]
+          }
+        }}
+      >
+        <Stack tokens={{
+          childrenGap: 20,
+        }}>
+          {problemIntentListData && trainingStatsData.similar_intents && trainingStatsData.similar_intents
+            .find(item => item.name === problemIntentListData.name)
+          ? <MessageBar 
+            messageBarType={MessageBarType.warning}
+          >
+            <b>Similar intents</b>
+            <p>
+              This intent is too similar to <span style={{ textDecoration: 'underline' }}>
+                {trainingStatsData.similar_intents
+                  .find(item => item.name === problemIntentListData.name)
+                  .similar_to}
+              </span>. Consider assigning contexts or merging these intents together.
+            </p>
+          </MessageBar>
+          : null}
+          {problemIntentListData && 
+          <DetailsList 
+            selectionMode={SelectionMode.none}
+            items={problemIntentListData.problem_examples}
+            layoutMode={DetailsListLayoutMode.justified}
+            columns={[
+              {
+                key: 'text',
+                name: 'Text',
+                fieldName: 'text',
+                data: 'string',
+                isResizable: true,
+                minWidth: 250,
+                maxWidth: 1000,
+                onRender: (item) => (<TooltipHost
+                  overflowMode={TooltipOverflowMode.Parent}
+                  content={item.text}
+                >
+                  <span>{item.text}</span>
+                </TooltipHost>)
+              },
+              {
+                key: 'predicted',
+                name: 'Predicted',
+                fieldName: 'predicted',
+                data: 'string',
+                isResizable: true,
+                minWidth: 250,
+                maxWidth: 1000,
+                onRender: (item) => (<TooltipHost
+                  overflowMode={TooltipOverflowMode.Self}
+                  content={item.predicted}
+                >
+                  <span>{item.predicted}</span>
+                </TooltipHost>)
+              },
+              // {
+              //   key: 'ground_truth',
+              //   name: 'Ground Truth',
+              //   fieldName: 'ground_truth',
+              //   data: 'string',
+              //   isResizable: true,
+              //   minWidth: 250,
+              //   maxWidth: 1000,
+              //   onRender: (item) => (<TooltipHost
+              //     overflowMode={TooltipOverflowMode.Self}
+              //     content={item.ground_truth}
+              //   >
+              //     <span>{item.ground_truth}</span>
+              //   </TooltipHost>)
+              // },
+              {
+                key: 'confidence',
+                name: 'Confidence',
+                fieldName: 'confidence',
+                data: 'string',
+                onRender: (item) => (<span>
+                  {`${Math.round(item.confidence * 10000) / 100}%`}
+                </span>)
+              }
+            ]}
+          />}
+        </Stack>
+        <DialogFooter>
+          <DefaultButton onClick={() => setProblemIntentListData(null)} text="Close" />
+        </DialogFooter>
+      </Dialog>
 
       <div>
       <FocusZone>
@@ -260,20 +381,24 @@ export const TrainingStatsPage = () => {
           .sort((a, b) => a.accuracy - b.accuracy)
         }
         onRenderCell={(item, item_idx) => 
-          <div key={item_idx} className={classNames.itemCell + ' ms-Grid'} data-is-focusable={true}>
+          <div key={item_idx} 
+            className={classNames.itemCell + ' ms-Grid'} 
+            data-is-focusable={true}
+            onClick={() => setProblemIntentListData(item)}
+          >
             <div className="ms-Grid-row" style={{ width: '100%' }}>
-              <div className="ms-Grid-col ms-sm6">
+              <div className="ms-Grid-col ms-sm6" style={{ padding: '12px 20px 10px 20px' }}>
                 <Text variant="mediumPlus">{item.name}</Text>
               </div>
-              <div className="ms-Grid-col ms-sm2">
+              <div className="ms-Grid-col ms-sm2" style={{ padding: 10 }}>
                 <div><Text variant="small">Correct</Text></div>
                 <div><Text variant="smallPlus">{'' + item.correct}</Text></div>
               </div>
-              <div className="ms-Grid-col ms-sm2">
+              <div className="ms-Grid-col ms-sm2" style={{ padding: 10 }}>
                 <div><Text variant="small">Incorrect</Text></div>
                 <div><Text variant="smallPlus">{'' + item.incorrect}</Text></div>
               </div>
-              <div className="ms-Grid-col ms-sm2">
+              <div className="ms-Grid-col ms-sm2" style={{ padding: 10 }}>
                 <div><Text variant="small">Accuracy</Text></div>
                 <div><Text variant="smallPlus">{`${Math.round(item.accuracy * 10000) / 100}%`}</Text></div>
               </div>

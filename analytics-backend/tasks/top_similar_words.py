@@ -7,8 +7,8 @@ import numpy as np
 from os import listdir, path
 
 import string
-
 import argparse
+import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--file_name', type=str, default='')
@@ -37,7 +37,7 @@ if __name__ == '__main__':
             words.append(word)
 
     words = list(set(words))
-    vectors = [utils.get_word_vector(word) for word in words]
+    vectors = utils.get_sentence_vectors([[word] for word in words])
     query_vector = utils.get_word_vector(query_word.replace(' ', '_'))
 
     similarity = np.dot(query_vector, np.vstack(vectors).T)
@@ -52,6 +52,7 @@ if __name__ == '__main__':
     response = [words[idx] for idx in indices]
 
     # return jsonify(response)
+    print(json.dumps(response))
     if args.callback_url.strip() != '':
         # from urllib import request, parse
         import requests
