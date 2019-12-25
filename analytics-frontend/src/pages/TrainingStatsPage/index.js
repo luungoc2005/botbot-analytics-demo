@@ -19,6 +19,7 @@ import { MessageBar, MessageBarType } from 'office-ui-fabric-react/lib/MessageBa
 import { Dialog, DialogType, DialogFooter } from 'office-ui-fabric-react/lib/Dialog';
 import { DetailsList, SelectionMode, DetailsListLayoutMode } from 'office-ui-fabric-react/lib/DetailsList';
 import { TooltipHost, TooltipOverflowMode } from 'office-ui-fabric-react/lib/Tooltip';
+import { SearchBox } from 'office-ui-fabric-react/lib/SearchBox';
 // import { useId } from '@uifabric/react-hooks';
 
 import { mergeStyleSets, getTheme, normalize, getFocusStyle } from 'office-ui-fabric-react/lib/Styling';
@@ -70,6 +71,7 @@ export const TrainingStatsPage = () => {
   // component states
   const [ trainingStatsLoading, setTrainingStatsLoading ] = useState(false);
   const [ problemIntentListData, setProblemIntentListData ] = useState(null);
+  const [ intentsFilterValue, setIntentsFilterValue ] = useState('');
 
   // data states
   const [ trainingStatsData, setTrainingStatsData ] = useState(null);
@@ -374,10 +376,19 @@ export const TrainingStatsPage = () => {
         </DialogFooter>
       </Dialog>
 
+      <SearchBox
+        placeholder="Filter"
+        iconProps={{ iconName: 'Filter' }}
+        value={intentsFilterValue}
+        onChange={(_, value) => setIntentsFilterValue(value)}
+      />
+
       <div>
       <FocusZone>
         {trainingStatsData.results_intents && <List
         items={trainingStatsData.results_intents
+          .filter(item => !intentsFilterValue 
+            || item.name.toLocaleLowerCase().indexOf(intentsFilterValue.toLocaleLowerCase()) > -1)
           .sort((a, b) => a.accuracy - b.accuracy)
         }
         onRenderCell={(item, item_idx) => 
