@@ -96,9 +96,11 @@ if __name__ == '__main__':
         X_train = cached_data['X_train']
         y_train = cached_data['y_train']
         clf = cached_data['clf']
+        mlb = cached_data['mlb']
     else:
         le = LabelEncoder()
         X_train = utils.get_sentence_vectors(raw_exampes_tokens)
+        mlb = None
 
         if has_contexts:
             print('Featurizing contexts')
@@ -121,6 +123,7 @@ if __name__ == '__main__':
 
         joblib.dump({
             'le': le,
+            'mlb': mlb,
             'X_train': X_train,
             'y_train': y_train,
             'clf': clf
@@ -217,7 +220,7 @@ if __name__ == '__main__':
 
         preds_class = preds[class_mask]
         y_class = y_train[class_mask]
-                
+
         # y_class[y_class != class_idx] = -1
         # preds_class[preds_class != class_idx] = -1
         # y_class = np.where(y_class == class_idx, 1, 0)
