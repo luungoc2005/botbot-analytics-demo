@@ -1,5 +1,6 @@
 from config import DATA_DIR, CACHE_DIR
 from common import cache, utils, ignore_lists, dialogflow
+from tasks.common import return_response
 
 from os import listdir, path, makedirs
 
@@ -22,18 +23,6 @@ parser.add_argument("--callback_url", type=str, default='')
 parser.add_argument("--sid", type=str, default='')
 
 args = parser.parse_args()
-
-def return_response(args, response):
-    if args.callback_url.strip() != '':
-        # from urllib import request, parse
-        import requests
-
-        print('Sending POST request to', args.callback_url)
-        # data = json.dumps(response).encode('utf8')
-        request_obj = requests.post(
-            args.callback_url,
-            data=json.dumps(response)
-        )
 
 if __name__ == '__main__':
     print(args)

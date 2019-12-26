@@ -88,3 +88,25 @@ def get_word_vector(word):
         print('Loading completed')
 
     return model.query(word)
+
+def get_sentence_vectors_full(text_list, length=80):
+    """
+    get non-averaged sentence vectors
+    """
+    num_sents = len(text_list)
+    ret_val = None
+    
+    for sent_ix in range(num_sents):
+        sent_vec = np.array(get_word_vector([word.replace(' ', '') 
+            for word in text_list[sent_ix]]))
+        
+        sent_length, emb_size = sent_vec.shape
+
+        if ret_val is None:
+            ret_val = np.zeros((num_sents, length, emb_size))
+        
+        vec_length = min(sent_length, length)
+
+        ret_val[sent_ix,:vec_length] = sent_vec[:vec_length]
+
+    return ret_val

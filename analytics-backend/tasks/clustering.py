@@ -1,6 +1,7 @@
 from common import cache, utils, ignore_lists
 from os import listdir, path
 from config import DATA_DIR
+from tasks.common import return_response
 
 import pandas as pd
 import numpy as np
@@ -100,15 +101,4 @@ if __name__ == '__main__':
         }
     }
 
-    if args.callback_url.strip() != '':
-        # from urllib import request, parse
-        import requests
-        import json
-
-        print('Sending POST request to', args.callback_url)
-        # data = json.dumps(response).encode('utf8')
-        request_obj = requests.post(
-            args.callback_url,
-            data=json.dumps(response)
-        )
-        # request.urlopen(request_obj)
+    return_response(args, response)
