@@ -89,13 +89,28 @@ def get_word_vector(word):
 
     return model.query(word)
 
-def get_sentence_vectors_full(text_list, length=80):
+def get_sentence_vectors_full(text_list, length=80, use_cache=True):
     """
     get non-averaged sentence vectors
     """
     num_sents = len(text_list)
     ret_val = None
     
+    cache_file = None
+    
+    if use_cache:
+        import hashlib
+        md5 = hashlib.md5()
+        data_str = json.dumps(text_list)
+        md5.update(data_str.encode('utf-8'))
+
+        cache_file = path.join(CACHE_DIR, f'full_vectors_{str(md5.hexdigest())}.npy')
+        print(cache_file)
+
+        if path.exists(cache_file) and path.isfile(cache_file):
+            print('Vector cache hit')
+            return np.load(cache_file)
+ 
     for sent_ix in range(num_sents):
         sent_vec = np.array(get_word_vector([word.replace(' ', '') 
             for word in text_list[sent_ix]]))
@@ -108,5 +123,8 @@ def get_sentence_vectors_full(text_list, length=80):
         vec_length = min(sent_length, length)
 
         ret_val[sent_ix,:vec_length] = sent_vec[:vec_length]
+
+    if cache_file is not None:
+        np.save(cache_file, ret_val)
 
     return ret_val

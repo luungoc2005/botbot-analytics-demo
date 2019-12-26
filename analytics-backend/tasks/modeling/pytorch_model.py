@@ -6,11 +6,16 @@ from torch.utils.data import DataLoader, Dataset
 
 import pytorch_lightning as pl
 
+from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer, StandardScaler
+from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score
+
 from config import DATA_DIR, CACHE_DIR
 from common import cache, utils, ignore_lists, dialogflow
 from tasks.common import return_response
 
 from os import listdir, path, makedirs
+
+import json
 
 DEFAULT_CONFIG = {
     'num_classes': 5,
@@ -22,12 +27,14 @@ DEFAULT_CONFIG = {
 class DfTrainingDataset(Dataset):
 
     def __init__(self, file_path):
+
+        # TODO: support priority
         file_hash = cache.get_file_hash(file_path)
 
         if not path.exists(CACHE_DIR) or not path.isdir(CACHE_DIR):
             makedirs(CACHE_DIR)
         
-        cache_path = path.join(CACHE_DIR, f'model_{file_hash}.bin')
+        cache_path = path.join(CACHE_DIR, f'torchdata_{file_hash}.pt')
 
         if file_path.lower()[-5:] == '.json':
             with open(file_path, 'r') as input_file:
@@ -60,8 +67,15 @@ class DfTrainingDataset(Dataset):
 
         raw_exampes_tokens = utils.tokenize_text_list(raw_examples)
 
+        self.raw_examples = raw_examples
+        self.raw_labels = raw_labels
+        self.raw_contexts = raw_contexts
+        self.examples_counts = examples_counts
+        self.has_contexts = has_contexts
+        
         le = LabelEncoder()
-        X_train = utils.get_sentence_vectors(raw_exampes_tokens)
+        X_train = utils.get_sentence_vectors_full(raw_exampes_tokens)
+        X_contexts = None
         mlb = None
 
         if has_contexts:
@@ -71,15 +85,27 @@ class DfTrainingDataset(Dataset):
 
         y_train = le.fit_transform(raw_labels)
 
-        self.X_train = X_train
-        self.X_contexts = X_contexts
-        self.y_train = y_train
+        self.le = le
+        self.mlb = mlb
+
+        self.X_train = torch.from_numpy(X_train).float()
+        self.X_contexts = torch.from_numpy(X_contexts).float() \
+            if X_contexts is not None else None
+        self.y_train = torch.from_numpy(y_train).long()
+
+        self.embedding_size = self.X_train.size(-1)
+        self.context_size = self.X_contexts.size(-1) \
+            if X_contexts is not None else 0
+        self.num_classes = len(le.classes_)
 
     def __len__(self):
         return len(self.X_train)
 
     def __getitem__(self, idx):
-        return X_train[idx], X_contexts[idx], y_train[idx]
+        if self.has_contexts:
+            return self.X_train[idx], self.X_contexts[idx], self.y_train[idx]
+        else:
+            return self.X_train[idx], self.y_train[idx]
 
 
 class LSTMTextClassifier(pl.LightningModule):
@@ -87,12 +113,15 @@ class LSTMTextClassifier(pl.LightningModule):
     def __init__(self, config={}, train_dataset=None):
         super(LSTMTextClassifier, self).__init__()
 
-        self.config = DEFAULT_CONFIG.update(config)
+        self.config = DEFAULT_CONFIG
+        self.config.update(config)
+
         self.num_classes = self.config['num_classes']
         self.embedding_size = self.config['embedding_size']
         self.context_size = self.config['context_size']
         self.hidden_size = self.config['hidden_size']
         self.train_dataset = train_dataset
+        self.has_contexts = train_dataset.has_contexts
 
         self.rnn = nn.LSTM(
             self.embedding_size + self.context_size, self.hidden_size,
@@ -100,27 +129,39 @@ class LSTMTextClassifier(pl.LightningModule):
             batch_first=True
         )
         
-        self.classifier = nn.Sequential(
-            nn.Linear(self.hidden_size * 2 + self.context_size, self.hidden_size),
-            nn.Linear(self.hidden_size, self.num_classes)
-        )
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(self.hidden_size * 2 + self.context_size, self.hidden_size),
+        #     nn.Linear(self.hidden_size, self.num_classes)
+        # )
+        self.classifier = nn.Linear(self.hidden_size * 2 + self.context_size, self.num_classes)
 
     def forward(self, examples_input, context_input):
         x = self.rnn(examples_input)[0]
         
-        x = x[:,-1] # last token state
-        x = torch.concat((x, context_input), axis=-1)
+        # x = x[:,-1] # last token state
+        x = torch.max(x, dim=1)[0] # max pooling
+        if (self.has_contexts):
+            x = torch.concat((x, context_input), axis=-1)
 
         x = self.classifier(x)
 
         return x
 
     def training_step(self, batch, batch_idx):
-        examples_input, context_input, y = batch
+        if self.has_contexts:
+            examples_input, context_input, y = batch
+        else:
+            examples_input, y = batch 
+            context_input = None
         y_hat = self.forward(examples_input, context_input)
         loss = F.cross_entropy(y_hat, y)
         
-        return { 'loss': loss }
+        # accuracy calculation
+        y_hat_classes = torch.max(y_hat, dim=1)[0]
+        accuracy = (y_hat_classes == y).float().mean().item()
+
+        tensorboard_logs = {'train_loss': loss, 'train_acc': accuracy}
+        return {'loss': loss, 'log': tensorboard_logs}
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters())
@@ -129,5 +170,5 @@ class LSTMTextClassifier(pl.LightningModule):
     def train_dataloader(self):
         if self.train_dataset is None:
             raise ValueError('Model was initialized without any training dataset')
-        return DataLoader(self.train_dataset, batch_size=32)
+        return DataLoader(self.train_dataset, batch_size=200)
         

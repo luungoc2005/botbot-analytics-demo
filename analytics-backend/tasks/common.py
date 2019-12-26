@@ -11,3 +11,6 @@ def return_response(args, response):
             args.callback_url,
             data=json.dumps(response)
         )
+    else:
+        with open('_response.json', 'w') as response_file:
+            json.dump(response, response_file, indent=4)

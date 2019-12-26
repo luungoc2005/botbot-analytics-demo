@@ -1,6 +1,7 @@
 from config import DATA_DIR, CACHE_DIR
-from common import cache, utils, ignore_lists, dialogflow
+from common import cache, utils, ignore_lists
 from tasks.common import return_response
+from tasks.modeling.pytorch_model import LSTMTextClassifier, DfTrainingDataset
 
 from os import listdir, path, makedirs
 
@@ -14,6 +15,7 @@ from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_sc
 import json
 import joblib
 
+import torch
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -31,97 +33,44 @@ if __name__ == '__main__':
 
     file_path = path.join(DATA_DIR, file_name)
 
-    file_hash = cache.get_file_hash(file_path)
+    train_dataset = DfTrainingDataset(file_path)
 
-    if not path.exists(CACHE_DIR) or not path.isdir(CACHE_DIR):
-        makedirs(CACHE_DIR)
-    
-    cache_path = path.join(CACHE_DIR, f'model_{file_hash}.bin')
+    clf = LSTMTextClassifier({
+        'embedding_size': train_dataset.embedding_size,
+        'context_size': train_dataset.context_size,
+        'num_classes': train_dataset.num_classes
+    }, train_dataset)
 
-    # return cached result
-    # if path.exists(cache_path) and path.isfile(cache_path):
-    #     with open(cache_path, 'r') as cached_file:
-    #         response = json.load(cached_file)
-    #     return_response(args, response)
-    #     exit()
+    from pytorch_lightning import Trainer
+    from pytorch_lightning.callbacks import EarlyStopping
 
-    if file_path.lower()[-5:] == '.json':
-        with open(file_path, 'r') as input_file:
-            training_file = json.load(input_file)
-    else:
-        training_file = dialogflow.load_dialogflow_archive(file_path)
+    early_stop_callback = EarlyStopping(
+        monitor='train_loss',
+        min_delta=0.00,
+        patience=3,
+        verbose=False,
+        mode='min'
+    )
 
-    # extract raw intents and labels from file. Needs upgrade
-    # TODO: support priority
-    raw_examples = []
-    raw_labels = []
-    raw_contexts = []
-    # raw_priorities = []
-    examples_counts = {}
-    has_contexts = False
+    trainer = Trainer(early_stop_callback=early_stop_callback)
+    trainer.fit(clf)
 
-    for intent_idx, intent in enumerate(training_file):
-        intent_name = intent['name']
-        intent_priority = intent.get('priority', 500000)
-
-        if intent_priority > 0:
-            for usersay in intent['usersays']:
-                raw_labels.append(intent_name)
-                raw_examples.append(usersay.strip())
-                contexts = intent.get('contexts', []) # this is optional
-                # raw_priorities.append([intent_priority])
-                if len(contexts) > 0:
-                    has_contexts = True
-                raw_contexts.append(contexts)
-
-        examples_counts[intent_name] = len(intent['usersays'])
-
-    raw_exampes_tokens = utils.tokenize_text_list(raw_examples)
-    
-    if path.exists(cache_path) and path.isfile(cache_path): 
-        cached_data = joblib.load(cache_path)
-
-        le = cached_data['le']
-        X_train = cached_data['X_train']
-        y_train = cached_data['y_train']
-        clf = cached_data['clf']
-        mlb = cached_data['mlb']
-    else:
-        le = LabelEncoder()
-        X_train = utils.get_sentence_vectors(raw_exampes_tokens)
-        mlb = None
-
-        if has_contexts:
-            print('Featurizing contexts')
-            mlb = MultiLabelBinarizer()
-            X_contexts = mlb.fit_transform(raw_contexts)
-            
-            X_train = np.concatenate([X_train, X_contexts], axis=1)
-            print(f'New input array shape: {X_train.shape}')
-
-        y_train = le.fit_transform(raw_labels)
-
-        clf = MLPClassifier(
-            hidden_layer_sizes=(50,), 
-            random_state=1,
-            batch_size=min(32, len(X_train)),
-            max_iter=200,
-            verbose=True)
-
-        clf.fit(X_train, y_train)
-
-        joblib.dump({
-            'le': le,
-            'mlb': mlb,
-            'X_train': X_train,
-            'y_train': y_train,
-            'clf': clf
-        }, cache_path)
-
-
-    preds_proba = clf.predict_proba(X_train)
+    with torch.no_grad():
+        preds_proba = torch.softmax(clf(
+                train_dataset.X_train, train_dataset.X_contexts
+            ),
+            dim=-1
+        )
+        preds_proba = preds_proba.cpu().numpy()
 
     preds = np.argmax(preds_proba, axis=-1)
+
+    
+    raw_examples = train_dataset.raw_examples
+    raw_labels = train_dataset.raw_labels
+    raw_contexts = train_dataset.raw_contexts
+    examples_counts = train_dataset.examples_counts
+    has_contexts = train_dataset.has_contexts
 
     examples_counts_keys = list(examples_counts.keys())
     examples_counts_values = list(examples_counts.values())

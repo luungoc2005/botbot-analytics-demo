@@ -8,8 +8,11 @@
             "name":"tasks.training_stats",
             "type":"python",
             "request":"launch",
-            "program":"${file}",
+            "module":"tasks.training_stats",
             "console":"integratedTerminal",
+            "env": {
+                "DEBUG": "1"
+            },
             "args": [
                 "--file", "kc_data.json"
             ],
