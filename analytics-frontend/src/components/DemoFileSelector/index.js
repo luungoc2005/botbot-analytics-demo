@@ -7,6 +7,7 @@ import { Text } from 'office-ui-fabric-react/lib/Text';
 import { FocusZone } from 'office-ui-fabric-react/lib/FocusZone';
 import { List } from 'office-ui-fabric-react/lib/List';
 import { CompoundButton } from 'office-ui-fabric-react/lib/Button';
+import { TooltipHost, TooltipOverflowMode } from 'office-ui-fabric-react/lib/Tooltip';
 
 const { palette, fonts } = getTheme();
 
@@ -102,9 +103,14 @@ export const DemoFileSelector = ({ onDemoFileClick = null }) => {
             <div className={classNames.listGridExamplePadder}>
               <img className={classNames.listGridExampleImage} />
               <span className={classNames.listGridExampleLabel}>
-                <Text variant="tiny">
-                  {item.name}
-                </Text>
+                <TooltipHost
+                  overflowMode={TooltipOverflowMode.Parent}
+                  content={item.name}
+                >
+                  <Text variant="tiny">
+                    {item.name}
+                  </Text>
+                </TooltipHost>
               </span>
             </div>
           </div>
