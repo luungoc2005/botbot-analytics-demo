@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 
 from torch.utils.data import DataLoader, Dataset
 
@@ -16,13 +17,6 @@ from tasks.common import return_response
 from os import listdir, path, makedirs
 
 import json
-
-DEFAULT_CONFIG = {
-    'num_classes': 5,
-    'embedding_size': 300,
-    'context_size': 20,
-    'hidden_size': 50
-}
 
 class DfTrainingDataset(Dataset):
 
@@ -97,6 +91,7 @@ class DfTrainingDataset(Dataset):
         self.context_size = self.X_contexts.size(-1) \
             if X_contexts is not None else 0
         self.num_classes = len(le.classes_)
+        self.classes_ = le.classes_
 
     def __len__(self):
         return len(self.X_train)
@@ -108,32 +103,41 @@ class DfTrainingDataset(Dataset):
             return self.X_train[idx], self.y_train[idx]
 
 
+DEFAULT_LSTM_CONFIG = {
+    'num_classes': 5,
+    'embedding_size': 300,
+    'context_size': 20,
+    'rnn_size': 30,
+    'hidden_size': 50
+}
+
 class LSTMTextClassifier(pl.LightningModule):
 
     def __init__(self, config={}, train_dataset=None):
         super(LSTMTextClassifier, self).__init__()
 
-        self.config = DEFAULT_CONFIG
+        self.config = DEFAULT_LSTM_CONFIG
         self.config.update(config)
 
         self.num_classes = self.config['num_classes']
         self.embedding_size = self.config['embedding_size']
         self.context_size = self.config['context_size']
+        self.rnn_size = self.config['rnn_size']
         self.hidden_size = self.config['hidden_size']
         self.train_dataset = train_dataset
         self.has_contexts = train_dataset.has_contexts
 
         self.rnn = nn.LSTM(
-            self.embedding_size + self.context_size, self.hidden_size,
+            self.embedding_size + self.context_size, self.rnn_size,
             bidirectional=True,
             batch_first=True
         )
         
-        # self.classifier = nn.Sequential(
-        #     nn.Linear(self.hidden_size * 2 + self.context_size, self.hidden_size),
-        #     nn.Linear(self.hidden_size, self.num_classes)
-        # )
-        self.classifier = nn.Linear(self.hidden_size * 2 + self.context_size, self.num_classes)
+        self.classifier = nn.Sequential(
+            nn.Linear(self.rnn_size * 2 + self.context_size, self.hidden_size),
+            nn.Linear(self.hidden_size, self.num_classes)
+        )
+        # self.classifier = nn.Linear(self.hidden_size * 2 + self.context_size, self.num_classes)
 
     def forward(self, examples_input, context_input):
         x = self.rnn(examples_input)[0]
@@ -141,7 +145,7 @@ class LSTMTextClassifier(pl.LightningModule):
         # x = x[:,-1] # last token state
         x = torch.max(x, dim=1)[0] # max pooling
         if (self.has_contexts):
-            x = torch.concat((x, context_input), axis=-1)
+            x = torch.cat((x, context_input), dim=-1)
 
         x = self.classifier(x)
 
@@ -171,4 +175,97 @@ class LSTMTextClassifier(pl.LightningModule):
         if self.train_dataset is None:
             raise ValueError('Model was initialized without any training dataset')
         return DataLoader(self.train_dataset, batch_size=200)
+        
+
+DEFAULT_CNN_CONFIG = {
+    'num_classes': 5,
+    'embedding_size': 300,
+    'context_size': 20,
+    'filter_sizes': [3, 4, 5],
+    'dropout': .2,
+    'n_filters': 25,
+    'hidden_size': 50
+}
+
+class CNNTextClassifier(pl.LightningModule):
+
+    def __init__(self, config={}, train_dataset=None):
+        super(CNNTextClassifier, self).__init__()
+
+        self.config = DEFAULT_CNN_CONFIG
+        self.config.update(config)
+
+        self.num_classes = self.config['num_classes']
+        self.embedding_size = self.config['embedding_size']
+        self.context_size = self.config['context_size']
+        self.hidden_size = self.config['hidden_size']
+        self.filter_sizes = self.config['filter_sizes']
+        self.n_filters = self.config['n_filters']
+        self.dropout_val = self.config['dropout']
+        self.train_dataset = train_dataset
+        self.has_contexts = train_dataset.has_contexts
+
+        self.convs = nn.ModuleList([
+            nn.Conv1d(
+                in_channels=self.embedding_size, 
+                out_channels=self.n_filters, 
+                kernel_size=fs
+            )
+            for fs in self.filter_sizes
+        ])
+
+        self.dropout = nn.Dropout(self.dropout_val)
+
+        self.classifier = nn.Sequential(
+            nn.Linear(
+                len(self.filter_sizes) * self.n_filters + self.context_size, 
+                self.hidden_size
+            ),
+            nn.Linear(self.hidden_size, self.num_classes)
+        )
+        # self.classifier = nn.Linear(self.hidden_size * 2 + self.context_size, self.num_classes)
+
+    def forward(self, examples_input, context_input):
+        x = examples_input.permute(0, 2, 1)
+        #embedded = [batch size, emb dim, sent len]
+
+        x = [F.relu(conv(x)) for conv in self.convs]
+        #conved_n = [batch size, n_filters, sent len - filter_sizes[n] + 1]
+
+        x = [F.max_pool1d(conv, conv.shape[2]).squeeze(2) for conv in x]
+        #pooled_n = [batch size, n_filters]
+
+        x = self.dropout(torch.cat(x, dim=1))
+
+        if (self.has_contexts):
+            x = torch.cat((x, context_input), dim=-1)
+
+        x = self.classifier(x)
+
+        return x
+
+    def training_step(self, batch, batch_idx):
+        if self.has_contexts:
+            examples_input, context_input, y = batch
+        else:
+            examples_input, y = batch 
+            context_input = None
+        y_hat = self.forward(examples_input, context_input)
+        loss = F.cross_entropy(y_hat, y)
+        
+        # accuracy calculation
+        y_hat_classes = torch.max(y_hat, dim=1)[0]
+        accuracy = (y_hat_classes == y).float().mean().item()
+
+        tensorboard_logs = {'train_loss': loss, 'train_acc': accuracy}
+        return {'loss': loss, 'log': tensorboard_logs}
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters())
+
+    @pl.data_loader
+    def train_dataloader(self):
+        if self.train_dataset is None:
+            raise ValueError('Model was initialized without any training dataset')
+        return DataLoader(self.train_dataset, batch_size=32)
         

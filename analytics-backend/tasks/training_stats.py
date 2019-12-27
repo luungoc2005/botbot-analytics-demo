@@ -1,7 +1,7 @@
 from config import DATA_DIR, CACHE_DIR
 from common import cache, utils, ignore_lists
 from tasks.common import return_response
-from tasks.modeling.pytorch_model import LSTMTextClassifier, DfTrainingDataset
+from tasks.modeling.pytorch_model import LSTMTextClassifier, CNNTextClassifier, DfTrainingDataset
 
 from os import listdir, path, makedirs
 
@@ -35,7 +35,13 @@ if __name__ == '__main__':
 
     train_dataset = DfTrainingDataset(file_path)
 
-    clf = LSTMTextClassifier({
+    # clf = LSTMTextClassifier({
+    #     'embedding_size': train_dataset.embedding_size,
+    #     'context_size': train_dataset.context_size,
+    #     'num_classes': train_dataset.num_classes
+    # }, train_dataset)
+
+    clf = CNNTextClassifier({
         'embedding_size': train_dataset.embedding_size,
         'context_size': train_dataset.context_size,
         'num_classes': train_dataset.num_classes
@@ -65,12 +71,13 @@ if __name__ == '__main__':
 
     preds = np.argmax(preds_proba, axis=-1)
 
-    
     raw_examples = train_dataset.raw_examples
     raw_labels = train_dataset.raw_labels
     raw_contexts = train_dataset.raw_contexts
     examples_counts = train_dataset.examples_counts
     has_contexts = train_dataset.has_contexts
+    X_train = train_dataset.X_train.cpu().numpy()
+    y_train = train_dataset.y_train.cpu().numpy()
 
     examples_counts_keys = list(examples_counts.keys())
     examples_counts_values = list(examples_counts.values())
@@ -123,9 +130,15 @@ if __name__ == '__main__':
         th_preds = np.copy(preds)
         th_preds[th_mask] = -1
         
-        thres_recall.append(recall_score(y_train, th_preds, average="weighted"))
-        thres_precision.append(precision_score(y_train, th_preds, average="weighted"))
-        thres_f1.append(f1_score(y_train, th_preds, average="weighted"))
+        thres_recall.append(float(
+            recall_score(y_train, th_preds, average="weighted")
+        ))
+        thres_precision.append(float(
+            precision_score(y_train, th_preds, average="weighted")
+        ))
+        thres_f1.append(float(
+            f1_score(y_train, th_preds, average="weighted")
+        ))
 
     response['thresholds_plot'] = {
         'data': [
@@ -152,7 +165,7 @@ if __name__ == '__main__':
 
     # by intents
 
-    for class_idx, class_name in enumerate(le.classes_):
+    for class_idx, class_name in enumerate(train_dataset.classes_):
         
         class_mask = (y_train == class_idx)
 
@@ -184,9 +197,9 @@ if __name__ == '__main__':
 
         results_intents[gt_cls]['problem_examples'].append({
             'text': raw_examples[diff_idx],
-            'predicted': le.classes_[pred_cls],
-            'confidence': preds_proba[diff_idx][pred_cls]
-            # 'ground_truth': f'{le.classes_[gt_cls]} [{gt_cls}]'
+            'predicted': train_dataset.classes_[int(pred_cls)],
+            'confidence': float(preds_proba[diff_idx][pred_cls])
+            # 'ground_truth': f'{train_dataset.classes_[gt_cls]} [{gt_cls}]'
         })
     
     # filter out items without issues
@@ -218,7 +231,7 @@ if __name__ == '__main__':
             overall_intents_plot[gt_class]['unclear'] += 1
 
     x_labels = ['Correctly predicted', 'Incorrectly predicted', 'Unclear predicted']
-    classes_list = list(le.classes_)
+    classes_list = list(train_dataset.classes_)
     response['overall_intents_plot'] = {
         'data': [
             {
