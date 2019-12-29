@@ -46,17 +46,17 @@ if __name__ == '__main__':
         train_dataset = DfTrainingDataset(file_path)
         torch.save(train_dataset, data_cache_path)
 
-    clf = LSTMTextClassifier({
-        'embedding_size': train_dataset.embedding_size,
-        'context_size': train_dataset.context_size,
-        'num_classes': train_dataset.num_classes
-    }, train_dataset)
-
-    # clf = CNNTextClassifier({
+    # clf = LSTMTextClassifier({
     #     'embedding_size': train_dataset.embedding_size,
     #     'context_size': train_dataset.context_size,
     #     'num_classes': train_dataset.num_classes
     # }, train_dataset)
+
+    clf = CNNTextClassifier({
+        'embedding_size': train_dataset.embedding_size,
+        'context_size': train_dataset.context_size,
+        'num_classes': train_dataset.num_classes
+    }, train_dataset)
 
     cache_path = path.join(CACHE_DIR, f'torchmodel_{file_hash}.pt')
 

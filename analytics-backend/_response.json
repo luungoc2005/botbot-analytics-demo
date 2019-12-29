@@ -1,30 +1,31 @@
 {
-    "predicted": "smalltalk.vulgarities",
-    "confidence": 0.5482116341590881,
+    "predicted": "CIS-MobilePlan-CheckifUnderCIS",
+    "confidence": 0.7604898810386658,
     "attributions": [
         {
             "text": "what",
-            "value": -0.778302788734436
+            "value": 0.19682756066322327,
+            "color": "hsl(120, 75%, 91%)"
         },
         {
-            "text": "the",
-            "value": 2.1171998977661133
-        },
-        {
-            "text": "fuck",
-            "value": 13.083279609680176
-        },
-        {
-            "text": "is",
-            "value": -0.4603210687637329
+            "text": "does",
+            "value": 0.1337825357913971,
+            "color": "hsl(120, 75%, 94%)"
         },
         {
             "text": "CIS",
-            "value": -3.2680084705352783
+            "value": 0.7508882880210876,
+            "color": "hsl(120, 75%, 63%)"
+        },
+        {
+            "text": "mean",
+            "value": 1.0,
+            "color": "hsl(120, 75%, 50%)"
         },
         {
             "text": "?",
-            "value": -1.4868226051330566
+            "value": 0.28364720940589905,
+            "color": "hsl(120, 75%, 86%)"
         }
     ]
 }
