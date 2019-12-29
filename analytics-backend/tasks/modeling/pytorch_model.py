@@ -23,12 +23,6 @@ class DfTrainingDataset(Dataset):
     def __init__(self, file_path):
 
         # TODO: support priority
-        file_hash = cache.get_file_hash(file_path)
-
-        if not path.exists(CACHE_DIR) or not path.isdir(CACHE_DIR):
-            makedirs(CACHE_DIR)
-        
-        cache_path = path.join(CACHE_DIR, f'torchdata_{file_hash}.pt')
 
         if file_path.lower()[-5:] == '.json':
             with open(file_path, 'r') as input_file:
@@ -106,6 +100,7 @@ class DfTrainingDataset(Dataset):
 DEFAULT_LSTM_CONFIG = {
     'num_classes': 5,
     'embedding_size': 300,
+    'embedding_factor_size': 128,
     'context_size': 20,
     'rnn_size': 30,
     'hidden_size': 50
@@ -124,11 +119,17 @@ class LSTMTextClassifier(pl.LightningModule):
         self.context_size = self.config['context_size']
         self.rnn_size = self.config['rnn_size']
         self.hidden_size = self.config['hidden_size']
+        self.embedding_factor_size = self.config['embedding_factor_size']
         self.train_dataset = train_dataset
         self.has_contexts = train_dataset.has_contexts
 
+        self.emb_factor_layer = nn.Linear(
+            self.embedding_size,
+            self.embedding_factor_size
+        )
+
         self.rnn = nn.LSTM(
-            self.embedding_size + self.context_size, self.rnn_size,
+            self.embedding_factor_size, self.rnn_size,
             bidirectional=True,
             batch_first=True
         )
@@ -140,7 +141,8 @@ class LSTMTextClassifier(pl.LightningModule):
         # self.classifier = nn.Linear(self.hidden_size * 2 + self.context_size, self.num_classes)
 
     def forward(self, examples_input, context_input):
-        x = self.rnn(examples_input)[0]
+        x = self.emb_factor_layer(examples_input)
+        x = self.rnn(x)[0]
         
         # x = x[:,-1] # last token state
         x = torch.max(x, dim=1)[0] # max pooling
@@ -272,22 +274,22 @@ class CNNTextClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         # return torch.optim.SGD(self.parameters())
-        opt = torch.optim.Adam(self.parameters(), lr=3e-4)
+        opt = torch.optim.Adam(self.parameters())
         # opt = torch.optim.SGD(
         #     self.parameters(), 
-        #     lr=0.1, 
+        #     lr=0
         #     momentum=0.9
         # )
-        # sched = optim.lr_scheduler.OneCycleLR(
-        #     opt, 
-        #     max_lr=0.01, 
-        #     steps_per_epoch=int(len(self.train_dataset) // self.batch_size), 
-        #     epochs=20
-        # )
-        sched = optim.lr_scheduler.CosineAnnealingWarmRestarts(
-            opt,
-            int(len(self.train_dataset) // self.batch_size) + 1
+        sched = optim.lr_scheduler.OneCycleLR(
+            opt, 
+            max_lr=0.01, 
+            steps_per_epoch=int(len(self.train_dataset) // self.batch_size), 
+            epochs=20
         )
+        # sched = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        #     opt,
+        #     int(len(self.train_dataset) // self.batch_size) + 1
+        # )
         return [opt], [sched]
 
     @pl.data_loader

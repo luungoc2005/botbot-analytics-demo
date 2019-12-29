@@ -33,41 +33,61 @@ if __name__ == '__main__':
 
     file_path = path.join(DATA_DIR, file_name)
 
-    train_dataset = DfTrainingDataset(file_path)
+    if not path.exists(CACHE_DIR) or not path.isdir(CACHE_DIR):
+        makedirs(CACHE_DIR)
+    
+    file_hash = cache.get_file_hash(file_path)
 
-    # clf = LSTMTextClassifier({
-    #     'embedding_size': train_dataset.embedding_size,
-    #     'context_size': train_dataset.context_size,
-    #     'num_classes': train_dataset.num_classes
-    # }, train_dataset)
+    data_cache_path = path.join(CACHE_DIR, f'torchdata_{file_hash}.pt')
 
-    clf = CNNTextClassifier({
+    if path.exists(cache_path) and path.isfile(cache_path):
+        train_dataset = torch.load(data_cache_path)
+    else:
+        train_dataset = DfTrainingDataset(file_path)
+        torch.save(train_dataset, data_cache_path)
+
+    clf = LSTMTextClassifier({
         'embedding_size': train_dataset.embedding_size,
         'context_size': train_dataset.context_size,
         'num_classes': train_dataset.num_classes
     }, train_dataset)
 
-    from pytorch_lightning import Trainer
-    from pytorch_lightning.callbacks import EarlyStopping
+    # clf = CNNTextClassifier({
+    #     'embedding_size': train_dataset.embedding_size,
+    #     'context_size': train_dataset.context_size,
+    #     'num_classes': train_dataset.num_classes
+    # }, train_dataset)
 
-    early_stop_callback = EarlyStopping(
-        monitor='train_loss',
-        min_delta=0.00,
-        patience=5,
-        verbose=False,
-        mode='min'
-    )
+    cache_path = path.join(CACHE_DIR, f'torchmodel_{file_hash}.pt')
 
-    trainer = Trainer(early_stop_callback=early_stop_callback)
-    trainer.fit(clf)
+    if path.exists(cache_path) and path.isfile(cache_path):
+        clf.load_state_dict(torch.load(cache_path))
+    else:
+        from pytorch_lightning import Trainer
+        from pytorch_lightning.callbacks import EarlyStopping
+
+        early_stop_callback = EarlyStopping(
+            monitor='train_loss',
+            min_delta=0.00,
+            patience=5,
+            verbose=False,
+            mode='min'
+        )
+
+        trainer = Trainer(early_stop_callback=early_stop_callback)
+        trainer.fit(clf)
+
+        torch.save(clf.state_dict(), cache_path)
 
     with torch.no_grad():
+        clf.eval()
         preds_proba = torch.softmax(clf(
                 train_dataset.X_train, train_dataset.X_contexts
             ),
             dim=-1
         )
         preds_proba = preds_proba.cpu().numpy()
+        clf.train()
 
     preds = np.argmax(preds_proba, axis=-1)
 

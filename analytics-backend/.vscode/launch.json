@@ -14,7 +14,7 @@
                 "DEBUG": "1"
             },
             "args": [
-                "--file", "kc_data.json"
+                "--file", "Francis.zip"
             ],
             "cwd": "/Users/luungoc2005/Documents/botbot-analytics/analytics-backend"
         }
