@@ -11,7 +11,7 @@ import { List } from 'office-ui-fabric-react/lib/List';
 // import { Checkbox } from 'office-ui-fabric-react/lib/Checkbox';
 // import { Callout } from 'office-ui-fabric-react/lib/Callout';
 import { DefaultButton } from 'office-ui-fabric-react/lib/Button';
-// import { TextField } from 'office-ui-fabric-react/lib/TextField';
+import { TextField } from 'office-ui-fabric-react/lib/TextField';
 // import { ComboBox } from 'office-ui-fabric-react/lib/ComboBox';
 import { FocusZone } from 'office-ui-fabric-react/lib/FocusZone';
 import { Pivot, PivotItem } from 'office-ui-fabric-react/lib/Pivot';
@@ -70,11 +70,15 @@ export const TrainingStatsPage = () => {
 
   // component states
   const [ trainingStatsLoading, setTrainingStatsLoading ] = useState(false);
+  const [ testQueryLoading, setTestQueryLoading ] = useState(false);
+
   const [ problemIntentListData, setProblemIntentListData ] = useState(null);
   const [ intentsFilterValue, setIntentsFilterValue ] = useState('');
+  const [ testQueryValue, setTestQueryValue ] = useState('');
 
   // data states
   const [ trainingStatsData, setTrainingStatsData ] = useState(null);
+  const [ testQueryData, setTestQueryData ] = useState(null);
 
   const _fullWidthPlotContainerElement = useRef();
 
@@ -104,7 +108,25 @@ export const TrainingStatsPage = () => {
     }
 
     fetchTrainingStatsData();
-  }, [demoTrainingFile])
+  }, [demoTrainingFile]);
+
+  const fetchTrainingTestQuery = async () => {
+    setTestQueryLoading(true);
+    const resp = await AnalyticsAPI.getTrainingTestQuery({ 
+      file: demoTrainingFile,
+      query: testQueryValue,
+      sid: socket.id,
+    })
+
+    const task_id = resp.data.task_id
+
+    if (task_id) {
+      awaitTaskResult(task_id, (data) => {
+        setTestQueryLoading(false);
+        setTestQueryData(data);
+      });
+    }
+  }
 
   const fullWidth = _fullWidthPlotContainerElement.current
     ? _fullWidthPlotContainerElement.current.clientWidth
@@ -419,6 +441,55 @@ export const TrainingStatsPage = () => {
       </FocusZone>
       </div></Stack>
     </PivotItem>
+
+
+    <PivotItem
+      headerText="Inspect Model"
+    >
+      <Stack tokens={{
+        childrenGap: 20,
+      }}>
+        <div />
+
+        <TextField 
+          placeholder='Please enter a query to test the model'
+          value={testQueryValue}
+          disabled={testQueryLoading}
+          onChange={(_, value) => setTestQueryValue(value)}
+        />
+        <DefaultButton
+          text="Enter"
+          disabled={testQueryLoading}
+          onClick={() => fetchTrainingTestQuery()}
+        />
+        {testQueryData && <>
+          
+          <Text variant="large">Model Attributions</Text>
+
+          <div>
+            {testQueryData.attributions && 
+            testQueryData.attributions.map((item, idx) => 
+              <Text 
+                key={idx} 
+                style={{
+                  padding: 10,
+                  backgroundColor: item.color,
+                }}
+                alt={item.value}
+              >
+                {item.text}
+              </Text>)}
+          </div>
+
+          <p>
+            <Text variant="medium">Result: </Text>
+            <Text variant="mediumPlus">{testQueryData.predicted}</Text>
+            <Text variant="medium">{` (${(Math.round(testQueryData.confidence * 10000) / 100)}%)`}</Text>
+          </p>
+        </>}
+      </Stack>
+    </PivotItem>
+
     </Pivot>}
   </Stack>
   </div>)

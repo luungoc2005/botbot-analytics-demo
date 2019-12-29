@@ -21,7 +21,7 @@ def training_test_query():
         return BadRequest('File not found')
 
     return jsonify({
-        'task_id': task_scheduler.run_task('tasks.training_stats', [
+        'task_id': task_scheduler.run_task('tasks.training_test_query', [
             '--file_name', file_name,
             '--query', test_query,
         ], request.url_root, sid)

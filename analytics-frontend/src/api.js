@@ -78,5 +78,10 @@ export const AnalyticsAPI = {
   getTrainingStats: (params = {
     file: '',
     sid: '',
-  }) => axios.get(`/training_stats?${stringify(params)}`)
+  }) => axios.get(`/training_stats?${stringify(params)}`),
+  getTrainingTestQuery: (params = {
+    file: '',
+    query: '',
+    sid: '',
+  }) => axios.get(`/training_test_query?${stringify(params)}`),
 }
