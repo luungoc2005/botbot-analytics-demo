@@ -180,10 +180,11 @@ class LSTMTextClassifier(pl.LightningModule):
 DEFAULT_CNN_CONFIG = {
     'num_classes': 5,
     'embedding_size': 300,
+    'embedding_factor_size': 128,
     'context_size': 20,
     'filter_sizes': [3, 4, 5],
     'dropout': .2,
-    'n_filters': 25,
+    'n_filters': 100,
     'hidden_size': 50
 }
 
@@ -202,12 +203,19 @@ class CNNTextClassifier(pl.LightningModule):
         self.filter_sizes = self.config['filter_sizes']
         self.n_filters = self.config['n_filters']
         self.dropout_val = self.config['dropout']
+        self.embedding_factor_size = self.config['embedding_factor_size']
         self.train_dataset = train_dataset
         self.has_contexts = train_dataset.has_contexts
+        self.batch_size = 64
+
+        self.emb_factor_layer = nn.Linear(
+            self.embedding_size,
+            self.embedding_factor_size
+        )
 
         self.convs = nn.ModuleList([
             nn.Conv1d(
-                in_channels=self.embedding_size, 
+                in_channels=self.embedding_factor_size, 
                 out_channels=self.n_filters, 
                 kernel_size=fs
             )
@@ -226,7 +234,9 @@ class CNNTextClassifier(pl.LightningModule):
         # self.classifier = nn.Linear(self.hidden_size * 2 + self.context_size, self.num_classes)
 
     def forward(self, examples_input, context_input):
-        x = examples_input.permute(0, 2, 1)
+        x = self.emb_factor_layer(examples_input)
+
+        x = x.permute(0, 2, 1)
         #embedded = [batch size, emb dim, sent len]
 
         x = [F.relu(conv(x)) for conv in self.convs]
@@ -261,11 +271,28 @@ class CNNTextClassifier(pl.LightningModule):
         return {'loss': loss, 'log': tensorboard_logs}
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters())
+        # return torch.optim.SGD(self.parameters())
+        opt = torch.optim.Adam(self.parameters(), lr=3e-4)
+        # opt = torch.optim.SGD(
+        #     self.parameters(), 
+        #     lr=0.1, 
+        #     momentum=0.9
+        # )
+        # sched = optim.lr_scheduler.OneCycleLR(
+        #     opt, 
+        #     max_lr=0.01, 
+        #     steps_per_epoch=int(len(self.train_dataset) // self.batch_size), 
+        #     epochs=20
+        # )
+        sched = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            opt,
+            int(len(self.train_dataset) // self.batch_size) + 1
+        )
+        return [opt], [sched]
 
     @pl.data_loader
     def train_dataloader(self):
         if self.train_dataset is None:
             raise ValueError('Model was initialized without any training dataset')
-        return DataLoader(self.train_dataset, batch_size=32)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size)
         

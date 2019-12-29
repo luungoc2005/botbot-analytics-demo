@@ -53,7 +53,7 @@ if __name__ == '__main__':
     early_stop_callback = EarlyStopping(
         monitor='train_loss',
         min_delta=0.00,
-        patience=3,
+        patience=5,
         verbose=False,
         mode='min'
     )
