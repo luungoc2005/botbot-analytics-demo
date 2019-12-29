@@ -7,7 +7,7 @@ from werkzeug.exceptions import BadRequest
 from os import listdir, path
 
 @training_routes_blueprint.route('/training_test_query')
-def training_stats():
+def training_test_query():
     file_name = request.args.get("file", "")
     test_query = request.args.get("query", "").strip()
 

@@ -6,13 +6,6 @@ from flask import jsonify, escape, request
 from werkzeug.exceptions import BadRequest
 from os import listdir, path
 
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
-from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score
-
-import json
-
 @training_routes_blueprint.route('/training_stats')
 def training_stats():
     file_name = request.args.get("file", "")
