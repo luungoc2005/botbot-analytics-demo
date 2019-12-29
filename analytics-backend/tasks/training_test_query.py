@@ -1,6 +1,7 @@
 from config import DATA_DIR, CACHE_DIR
-from common import cache, utils, ignore_lists, dialogflow
+from common import cache, utils, ignore_lists
 from tasks.common import return_response
+from tasks.modeling.pytorch_model import LSTMTextClassifier, CNNTextClassifier, DfTrainingDataset
 
 from os import listdir, path, makedirs
 
@@ -13,6 +14,8 @@ from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_sc
 
 import json
 import joblib
+
+import torch
 
 import argparse
 
@@ -36,20 +39,56 @@ if __name__ == '__main__':
 
     if not path.exists(CACHE_DIR) or not path.isdir(CACHE_DIR):
         makedirs(CACHE_DIR)
+
+    data_cache_path = path.join(CACHE_DIR, f'torchdata_{file_hash}.pt')
+
+    train_dataset = torch.load(data_cache_path)
+
+    cache_path = path.join(CACHE_DIR, f'torchmodel_{file_hash}.pt')
+    clf = LSTMTextClassifier({
+        'embedding_size': train_dataset.embedding_size,
+        'context_size': train_dataset.context_size,
+        'num_classes': train_dataset.num_classes
+    }, train_dataset)
+    clf.load_state_dict(torch.load(cache_path))
     
-    cache_path = path.join(CACHE_DIR, f'model_{file_hash}.bin')
+    query = utils.tokenize_text_list([args.query])
+    query_emb = torch.FloatTensor(utils.get_sentence_vectors_full(query))
 
-    # return cached result
-    # if path.exists(cache_path) and path.isfile(cache_path):
-    #     with open(cache_path, 'r') as cached_file:
-    #         response = json.load(cached_file)
-    #     return_response(args, response)
-    #     exit()
+    # prediction
+    input_context = torch.zeros((1, train_dataset.context_size)).float()
+    clf.zero_grad()
+    preds_proba = torch.softmax(clf(
+            query_emb, input_context
+        ),
+        dim=-1
+    )
 
-    if file_path.lower()[-5:] == '.json':
-        with open(file_path, 'r') as input_file:
-            training_file = json.load(input_file)
-    else:
-        training_file = dialogflow.load_dialogflow_archive(file_path)
+    preds_proba, preds_idx = torch.max(preds_proba, axis=-1)
+    attr_target = int(preds_idx.detach().item())
 
-    #TODO
+    from captum.attr import IntegratedGradients
+
+    ig = IntegratedGradients(clf)
+    attributions_ig, delta = ig.attribute(
+        query_emb,
+        target=attr_target,
+        additional_forward_args=(input_context,),
+        n_steps=500, 
+        return_convergence_delta=True
+    )
+
+    output_attr = torch.max(attributions_ig, axis=-1)[0][0].detach()
+    response = {
+        'predicted': str(train_dataset.classes_[attr_target]),
+        'confidence': float(preds_proba[0].detach().item()),
+        'attributions': [
+            {
+                'text': str(word),
+                'value': float(output_attr[idx].detach().item())
+            }
+            for idx, word in enumerate(query[0])
+        ]
+    }
+
+    return_response(args, response)

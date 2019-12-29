@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     data_cache_path = path.join(CACHE_DIR, f'torchdata_{file_hash}.pt')
 
-    if path.exists(cache_path) and path.isfile(cache_path):
+    if path.exists(data_cache_path) and path.isfile(data_cache_path):
         train_dataset = torch.load(data_cache_path)
     else:
         train_dataset = DfTrainingDataset(file_path)
