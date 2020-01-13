@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--base_path', type=str, default='')
 parser.add_argument('--output_path', type=str, default='')
 parser.add_argument('--model_prefix', type=str, default='en')
+parser.add_argument('--dataset_type', type=str, default='train')
 parser.add_argument('--max_sentence_length', type=int, default=256)
 
 args = parser.parse_args()
@@ -20,11 +21,9 @@ buffer = []
 if __name__ == '__main__':
     BASE_PATH = args.base_path
     OUTPUT_PATH = args.output_path
+    assert args.dataset_type in ['train', 'test']
 
-    paths = [
-        # path.join(BASE_PATH, 'wikitext2/wiki.train.tokens'),
-        path.join(BASE_PATH, 'wikitext103raw/wiki.train.raw')
-    ]
+    paths = []
 
     def load_folder(folder_path, filter_txt=True):
         paths.extend([
@@ -32,10 +31,24 @@ if __name__ == '__main__':
             for filename in listdir(folder_path)
             if not filter_txt or filename.lower().endswith('txt')
         ])
-    # load_folder(path.join(BASE_PATH, 'bookcorpus'))
-    load_folder(path.join(
-        BASE_PATH, '1-billion-word-language-modeling-benchmark-r13output/training-monolingual.tokenized.shuffled'), filter_txt=False)
-    load_folder(path.join(BASE_PATH, 'stories_corpus'))
+
+    if args.dataset_type == 'train':
+        paths = [
+            # path.join(BASE_PATH, 'wikitext2/wiki.train.tokens'),
+            path.join(BASE_PATH, 'wikitext103raw/wiki.train.raw')
+        ]
+
+        # load_folder(path.join(BASE_PATH, 'bookcorpus'))
+        load_folder(path.join(
+            BASE_PATH, '1-billion-word-language-modeling-benchmark-r13output/training-monolingual.tokenized.shuffled'), filter_txt=False)
+        load_folder(path.join(BASE_PATH, 'stories_corpus'))
+    else:
+        paths = [
+            path.join(BASE_PATH, 'wikitext103raw/wiki.test.raw')
+        ]
+
+        load_folder(path.join(
+            BASE_PATH, '1-billion-word-language-modeling-benchmark-r13output/heldout-monolingual.tokenized.shuffled'), filter_txt=False)
 
     if not path.isdir(OUTPUT_PATH):
         makedirs(OUTPUT_PATH)
@@ -47,7 +60,7 @@ if __name__ == '__main__':
     sp_model_path = path.join(TOKENIZER_PATH, f'{args.model_prefix}.model')
     sp.Load(sp_model_path)
 
-    data_path = path.join(OUTPUT_PATH, 'data.h5')
+    data_path = path.join(OUTPUT_PATH, f'data_{args.dataset_type}.h5')
 
     REF_CHUNK_SIZE = 320000
 
