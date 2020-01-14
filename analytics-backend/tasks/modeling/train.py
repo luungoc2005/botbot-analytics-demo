@@ -155,14 +155,24 @@ if __name__ == '__main__':
 
         @pl.data_loader
         def train_dataloader(self):
-            return DataLoader(HDF5Dataset(train_dataset_path), batch_size=32, num_workers=7, pin_memory=True)
+            return DataLoader(HDF5Dataset(train_dataset_path), batch_size=48, num_workers=7, pin_memory=True)
 
         @pl.data_loader
         def test_dataloader(self):
-            return DataLoader(HDF5Dataset(test_dataset_path), batch_size=32, num_workers=7, pin_memory=True)
+            return DataLoader(HDF5Dataset(test_dataset_path), batch_size=48, num_workers=7, pin_memory=True)
 
     from pytorch_lightning import Trainer
+    from pytorch_lightning.callbacks import ModelCheckpoint
+
+    checkpoint_callback = ModelCheckpoint(
+        filepath=os.getcwd(),
+        save_best_only=True,
+        verbose=True,
+        monitor='train_loss',
+        mode='min',
+        prefix=''
+    )
 
     model = LMAdversarialModel()
-    trainer = Trainer(gpus=1, use_amp=True, row_log_interval=10)    
+    trainer = Trainer(gpus=1, use_amp=True, row_log_interval=10, checkpoint_callback=checkpoint_callback)    
     trainer.fit(model)
