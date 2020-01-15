@@ -3,10 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.utils.data import DataLoader, Dataset
 
 DEFAULT_LSTM_CONFIG = {
-    'vocab_size': 32000,
+    'vocab_size': 12000,
     'embedding_size': 128,
     'embedding_factor_size': 300,
     'hidden_size': 2048,
@@ -48,11 +49,21 @@ class LSTM_LM(nn.Module):
             num_layers=self.n_layers
         )
         
-    def forward(self, tokens, pool=False):
+    def forward(self, tokens, input_lengths=None, pool=False):
         x = self.embedding(tokens)
         x = self.embedding_linear(x)
 
-        x = self.rnn(x)[0]
+        if input_lengths is not None:
+            x = pack_padded_sequence(x, input_lengths, 
+                batch_first=True, 
+                enforce_sorted=False
+            )
+
+            x = self.rnn(x)[0]
+
+            x = pad_packed_sequence(x, batch_first=True, total_length=tokens.size(1))[0]
+        else:
+            x = self.rnn(x)[0]
 
         if pool:
             # x[x == 0] = -1e8

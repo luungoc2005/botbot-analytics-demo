@@ -12,7 +12,7 @@ parser.add_argument('--base_path', type=str, default='')
 parser.add_argument('--output_path', type=str, default='')
 parser.add_argument('--model_prefix', type=str, default='en')
 parser.add_argument('--dataset_type', type=str, default='train')
-parser.add_argument('--max_sentence_length', type=int, default=256)
+parser.add_argument('--max_sentence_length', type=int, default=128)
 
 args = parser.parse_args()
 
@@ -55,10 +55,20 @@ if __name__ == '__main__':
 
     TOKENIZER_PATH = path.join(OUTPUT_PATH, 'sentencepiece')
     
-    import sentencepiece as spm
-    sp = spm.SentencePieceProcessor()
-    sp_model_path = path.join(TOKENIZER_PATH, f'{args.model_prefix}.model')
-    sp.Load(sp_model_path)
+    # import sentencepiece as spm
+    # sp = spm.SentencePieceProcessor()
+    # sp_model_path = path.join(TOKENIZER_PATH, f'{args.model_prefix}.model')
+    # sp.Load(sp_model_path)
+
+    from tokenizers import BertWordPieceTokenizer
+    tokenizer_path = path.join(TOKENIZER_PATH, f'{args.model_prefix}-vocab.txt')
+    tokenizer = BertWordPieceTokenizer(tokenizer_path,
+        add_special_tokens=True,
+        clean_text=True,
+        handle_chinese_chars=True,
+        strip_accents=False,
+        lowercase=False
+    )
 
     data_path = path.join(OUTPUT_PATH, f'data_{args.dataset_type}.h5')
 
@@ -69,12 +79,19 @@ if __name__ == '__main__':
             global buffer
             chunk_size = len(buffer)
             x_buffer = np.zeros((chunk_size, args.max_sentence_length))
+            length_buffer = np.zeros((chunk_size,), dtype=np.int64)
+
             for ix, sentence in enumerate(buffer):
-                tokens = sp.EncodeAsIds(sentence)
-                if len(tokens) > args.max_sentence_length:
+                # tokens = sp.EncodeAsIds(sentence)
+                tokens = tokenizer.encode(sentence).ids
+                true_length = len(tokens)
+
+                if true_length > args.max_sentence_length:
                     tokens = tokens[:args.max_sentence_length]
+                    true_length = args.max_sentence_length
 
                 x_buffer[ix,:len(tokens)] = tokens
+                length_buffer[ix] = true_length
 
             if not 'tokens' in hf:
                 hf.create_dataset('tokens', data=x_buffer, \
@@ -82,6 +99,14 @@ if __name__ == '__main__':
             else:
                 hf['tokens'].resize((hf['tokens'].shape[0] + chunk_size), axis=0)
                 hf['tokens'][-chunk_size:] = x_buffer
+
+            if not 'lengths' in hf:
+                hf.create_dataset('lengths', data=length_buffer, \
+                    compression="gzip", chunks=True, maxshape=(None,))
+            else:
+                hf['lengths'].resize((hf['lengths'].shape[0] + chunk_size), axis=0)
+                hf['lengths'][-chunk_size:] = length_buffer
+
             buffer = []
 
         for file_name in paths:
