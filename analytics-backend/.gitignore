@@ -136,6 +136,7 @@ dmypy.json
 logs/
 _cache/
 lightning_logs/
+/tasks/modeling/data/
 
 *.h5
 *.model
