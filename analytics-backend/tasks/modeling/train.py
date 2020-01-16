@@ -68,41 +68,52 @@ if __name__ == '__main__':
 
     from model_lstm import LSTM_LM, LMClassifierHead, LMGeneratorHead
 
+    MODEL_CONFIG = {
+        'generator_lm': {
+            'vocab_size': 12008,
+            'embedding_size': 128,
+            'embedding_factor_size': 300,
+            'recurrent_dropout': .4,
+            'hidden_size': 800,
+            'n_layers': 3
+        },
+        'generator_head': {
+            'encoder_hidden_size': 800 * 2,
+            'vocab_size': 12008,
+            'embedding_size': 128,
+            'embedding_factor_size': 300
+        },
+        'discriminator_lm': {
+            'vocab_size': 12008,
+            'embedding_size': 128,
+            'embedding_factor_size': 300,
+            'recurrent_dropout': .4,
+            'hidden_size': 1152,
+            'n_layers': 3
+        },
+        'discriminator_head': {
+            'encoder_hidden_size': 1152 * 2,
+            'hidden_size': 512,
+            'num_classes': 1
+        },
+        'discriminator_loss_delta': 50
+    }
+
     class LMAdversarialModel(pl.LightningModule):
 
-        def __init__(self):
+        def __init__(self, hparams):
             super(LMAdversarialModel, self).__init__()
+            self.hparams = hparams
 
-            self.generator_lm = LSTM_LM({
-                'vocab_size': 12008,
-                'embedding_size': 128,
-                'embedding_factor_size': 300,
-                'hidden_size': 800,
-                'n_layers': 3
-            })
-            self.discriminator_lm = LSTM_LM({
-                'vocab_size': 12008,
-                'embedding_size': 128,
-                'embedding_factor_size': 300,
-                'hidden_size': 1152,
-                'n_layers': 3
-            })
+            self.generator_lm = LSTM_LM(hparams['generator_lm'])
+            self.discriminator_lm = LSTM_LM(hparams['discriminator_lm'])
+
+            self.generator_head = LMGeneratorHead(hparams['generator_head'])
+            self.discriminator_head = LMClassifierHead(hparams['discriminator_head']})
+            self.discriminator_loss_delta = hparams['discriminator_loss_delta']
 
             self.generator_lm.embedding.weight = self.discriminator_lm.embedding.weight
             self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
-
-            self.generator_head = LMGeneratorHead({
-                'encoder_hidden_size': 800 * 2,
-                'vocab_size': 12008,
-                'embedding_size': 128,
-                'embedding_factor_size': 300
-            })
-            self.discriminator_head = LMClassifierHead({
-                'encoder_hidden_size': 1152 * 2,
-                'hidden_size': 512,
-                'num_classes': 1
-            })
-            self.discriminator_loss_delta = 50.
 
             self.generator_head.decoder.weight = self.generator_lm.embedding.weight
 

@@ -11,6 +11,7 @@ DEFAULT_LSTM_CONFIG = {
     'embedding_size': 128,
     'embedding_factor_size': 300,
     'hidden_size': 2048,
+    'recurrent_dropout': .4,
     'n_layers': 3
 }
 
@@ -39,14 +40,16 @@ class LSTM_LM(nn.Module):
         self.embedding_size = self.config['embedding_size']
         self.embedding_factor_size = self.config['embedding_factor_size']
         self.hidden_size = self.config['hidden_size']
+        self.recurrent_dropout = self.config['recurrent_dropout']
         self.n_layers = self.config['n_layers']
         
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
         self.embedding_linear = nn.Linear(self.embedding_size, self.embedding_factor_size)
         self.rnn = nn.LSTM(self.embedding_factor_size, self.hidden_size,
             batch_first=True,
-            bidirectional=True, 
-            num_layers=self.n_layers
+            bidirectional=True,
+            num_layers=self.n_layers,
+            dropout=self.recurrent_dropout
         )
         
     def forward(self, tokens, input_lengths=None, pool=False):
