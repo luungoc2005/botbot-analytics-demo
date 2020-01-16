@@ -73,7 +73,7 @@ if __name__ == '__main__':
             'vocab_size': 12008,
             'embedding_size': 128,
             'embedding_factor_size': 300,
-            'recurrent_dropout': .4,
+            'recurrent_dropout': .1,
             'hidden_size': 800,
             'n_layers': 3
         },
@@ -109,7 +109,7 @@ if __name__ == '__main__':
             self.discriminator_lm = LSTM_LM(hparams['discriminator_lm'])
 
             self.generator_head = LMGeneratorHead(hparams['generator_head'])
-            self.discriminator_head = LMClassifierHead(hparams['discriminator_head']})
+            self.discriminator_head = LMClassifierHead(hparams['discriminator_head'])
             self.discriminator_loss_delta = hparams['discriminator_loss_delta']
 
             self.generator_lm.embedding.weight = self.discriminator_lm.embedding.weight

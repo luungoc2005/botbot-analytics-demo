@@ -11,7 +11,7 @@ DEFAULT_LSTM_CONFIG = {
     'embedding_size': 128,
     'embedding_factor_size': 300,
     'hidden_size': 2048,
-    'recurrent_dropout': .4,
+    'recurrent_dropout': .1,
     'n_layers': 3
 }
 
