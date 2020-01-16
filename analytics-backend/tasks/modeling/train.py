@@ -68,37 +68,6 @@ if __name__ == '__main__':
 
     from model_lstm import LSTM_LM, LMClassifierHead, LMGeneratorHead
 
-    MODEL_CONFIG = {
-        'generator_lm': {
-            'vocab_size': 12008,
-            'embedding_size': 128,
-            'embedding_factor_size': 300,
-            'recurrent_dropout': .1,
-            'hidden_size': 800,
-            'n_layers': 3
-        },
-        'generator_head': {
-            'encoder_hidden_size': 800 * 2,
-            'vocab_size': 12008,
-            'embedding_size': 128,
-            'embedding_factor_size': 300
-        },
-        'discriminator_lm': {
-            'vocab_size': 12008,
-            'embedding_size': 128,
-            'embedding_factor_size': 300,
-            'recurrent_dropout': .4,
-            'hidden_size': 1152,
-            'n_layers': 3
-        },
-        'discriminator_head': {
-            'encoder_hidden_size': 1152 * 2,
-            'hidden_size': 512,
-            'num_classes': 1
-        },
-        'discriminator_loss_delta': 50
-    }
-
     class LMAdversarialModel(pl.LightningModule):
 
         def __init__(self, hparams):
@@ -335,7 +304,38 @@ if __name__ == '__main__':
     from pytorch_lightning import Trainer
     from pytorch_lightning.callbacks import ModelCheckpoint
 
-    model = LMAdversarialModel()
+    MODEL_CONFIG = {
+        'generator_lm': {
+            'vocab_size': 12008,
+            'embedding_size': 128,
+            'embedding_factor_size': 300,
+            'recurrent_dropout': .1,
+            'hidden_size': 800,
+            'n_layers': 3
+        },
+        'generator_head': {
+            'encoder_hidden_size': 800 * 2,
+            'vocab_size': 12008,
+            'embedding_size': 128,
+            'embedding_factor_size': 300
+        },
+        'discriminator_lm': {
+            'vocab_size': 12008,
+            'embedding_size': 128,
+            'embedding_factor_size': 300,
+            'recurrent_dropout': .4,
+            'hidden_size': 1152,
+            'n_layers': 3
+        },
+        'discriminator_head': {
+            'encoder_hidden_size': 1152 * 2,
+            'hidden_size': 512,
+            'num_classes': 1
+        },
+        'discriminator_loss_delta': 50
+    }
+
+    model = LMAdversarialModel(MODEL_CONFIG)
 
     from pytorch_lightning.callbacks import ModelCheckpoint
 
