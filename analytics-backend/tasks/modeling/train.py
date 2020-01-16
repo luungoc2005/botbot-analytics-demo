@@ -138,20 +138,9 @@ if __name__ == '__main__':
                 x.view(-1)[flattened_mask_positions]
             ).float().mean()
 
-            x_full_generator_result = torch.max(x_generator.detach(), dim=-1)[1]
-            # else:
-            #     # loss on only masked tokens
-            #     x_generator = x_generator[mask_positions,:]
-            #     x_generator = self.generator_head(x_generator)
-            #     generator_loss = F.cross_entropy(
-            #         x_generator,
-            #         mask_targets[mask_positions].view(-1), 
-            #         reduction='sum'
-            #     ) / sample_size
+            x_full_generator_result = x.clone()
+            x_full_generator_result[mask_positions] = torch.max(x_generator.detach(), dim=-1)[1][mask_positions]
 
-            #     x_full_generator_result = x.clone()
-            #     x_full_generator_result[mask_positions] = torch.max(x_generator.detach(), dim=-1)[1]
-            
             adjusted_mask_positions = mask_positions.clone()
             adjusted_mask_positions[x_full_generator_result == x] = False
             adjusted_mask_positions = adjusted_mask_positions.float().detach()
@@ -214,7 +203,8 @@ if __name__ == '__main__':
                 x.view(-1)[flattened_mask_positions]
             ).float().mean()
 
-            x_full_generator_result = torch.max(x_generator.detach(), dim=-1)[1]
+            x_full_generator_result = x.clone()
+            x_full_generator_result[mask_positions] = torch.max(x_generator.detach(), dim=-1)[1][mask_positions]
 
             adjusted_mask_positions = mask_positions.clone()
             adjusted_mask_positions[x_full_generator_result == x] = False
