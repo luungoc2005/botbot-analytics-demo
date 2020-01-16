@@ -269,20 +269,51 @@ if __name__ == '__main__':
                     generator_preds = outputs[ix]['first_generator_result'][:x_length].cpu().numpy().tolist()
                     discriminator_preds = (outputs[ix]['first_discriminator_result'][:x_length] > 0.5).long().cpu().numpy().tolist()
 
-                    original_str = tokenizer.decode(x_tokens, skip_special_tokens=False)
-                    original_tokens = [tokenizer.id_to_token(token) for token in x_tokens]
-                    for (token_ix, val) in enumerate(item_mask):
-                        if token_ix > len(original_tokens) - 1:
-                            break
-                        if val == 1:
-                            original_tokens[token_ix] = '__'
-                    masked_str = ' '.join(original_tokens)
-                    pred_str = tokenizer.decode(generator_preds, skip_special_tokens=False)
+                    original_tokens = [
+                        tokenizer.id_to_token(token) for token in x_tokens
+                    ]
+                    pred_tokens = [
+                        tokenizer.id_to_token(token) if item_mask[ix] == 1 else ' ' for 
+                            ix, token in enumerate(generator_preds)
+                    ]
+                    masked_tokens = [
+                        '<MASK>' if mask == 1 else ' ' for mask in item_mask
+                    ]
 
-                    print(f'Original: {original_str}')
-                    print(f'Masked: {masked_str}')
-                    print(f'Generated: {pred_str}')
-                    print(f'Discriminator: {discriminator_preds}')
+                    discriminator_tokens = []
+
+                    for ix in range(len(original_tokens)):
+                        orig_token_len = len(original_tokens[ix])
+                        pred_token_len = len(pred_tokens[ix])
+                        mask_token_len = len(masked_tokens[ix])
+
+                        max_len = max(orig_token_len, pred_token_len, mask_token_len)
+
+                        original_tokens[ix] = original_tokens[ix] + ' ' * (max_len - orig_token_len)
+                        pred_tokens[ix] = pred_tokens[ix] + ' ' * (max_len - pred_token_len)
+                        masked_tokens[ix] = masked_tokens[ix] + ' ' * (max_len - mask_token_len)
+                        discriminator_tokens.append(str(discriminator_preds[ix]) + ' ' * (max_len - 1))
+
+                    original_tokens      = ['Original:     '] + original_tokens
+                    masked_tokens        = ['Masked:       '] + masked_tokens
+                    pred_tokens          = ['Generator:    '] + pred_tokens
+                    discriminator_tokens = ['Discriminator:'] + discriminator_tokens
+
+                    # original_str = tokenizer.decode(x_tokens, skip_special_tokens=False)
+                    original_str = ' '.join(original_tokens)
+                    masked_str = ' '.join(masked_tokens)
+                    pred_str = ' '.join(pred_tokens)
+                    disc_str = ' '.join(discriminator_tokens)
+                    # pred_str = tokenizer.decode(generator_preds, skip_special_tokens=False)
+
+                    import shutil
+                    terminal_size = shutil.get_terminal_size((80, 20))
+
+                    print('---')
+                    print(original_str[:terminal_size.columns])
+                    print(masked_str[:terminal_size.columns])
+                    print(pred_str[:terminal_size.columns])
+                    print(disc_str[:terminal_size.columns])
 
                 print('---')
             return result
