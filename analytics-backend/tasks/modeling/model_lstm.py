@@ -88,7 +88,7 @@ class LMClassifierHead(nn.Module):
         self.num_classes = self.config['num_classes']
 
         self.classifier = nn.Sequential(
-            nn.Linear(self.encoder_hidden_size * 2, self.hidden_size),
+            nn.Linear(self.encoder_hidden_size, self.hidden_size),
             nn.Linear(self.hidden_size, self.hidden_size),
             nn.Linear(self.hidden_size, self.num_classes),
         )
@@ -110,7 +110,7 @@ class LMGeneratorHead(nn.Module):
         self.embedding_factor_size = self.config['embedding_factor_size']
         self.vocab_size = self.config['vocab_size']
 
-        self.linear = nn.Linear(self.encoder_hidden_size * 2, self.embedding_factor_size)
+        self.linear = nn.Linear(self.encoder_hidden_size, self.embedding_factor_size)
         self.embedding_linear = nn.Linear(self.embedding_factor_size, self.embedding_size)
         self.decoder = nn.Linear(self.embedding_size, self.vocab_size)
 
