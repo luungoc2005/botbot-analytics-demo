@@ -166,9 +166,11 @@ if __name__ == '__main__':
                 reduction='mean'
             )
             
-            discriminator_accuracy = ((x_discriminator > .5).float() == adjusted_mask_positions)\
-                .float().mean()
-
+            discriminator_accuracy = (
+                (
+                    x_discriminator > .5).float()[mask_positions] == \
+                    adjusted_mask_positions[mask_positions]
+                ).float().mean()
             loss = generator_loss + discriminator_loss
 
             tensorboard_logs = {
@@ -227,8 +229,11 @@ if __name__ == '__main__':
                 x_discriminator, adjusted_mask_positions, 
                 reduction='mean'
             )
-            discriminator_accuracy = ((x_discriminator > .5).float() == adjusted_mask_positions)\
-                .float().mean()
+            discriminator_accuracy = (
+                (
+                    x_discriminator > .5).float()[mask_positions] == \
+                    adjusted_mask_positions[mask_positions]
+                ).float().mean()
 
             loss = generator_loss + discriminator_loss
 
