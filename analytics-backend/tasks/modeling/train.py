@@ -68,6 +68,18 @@ if __name__ == '__main__':
 
     from model_lstm import LSTM_LM, LMClassifierHead, LMGeneratorHead
 
+    class HParams(dict):
+        __getattr__ = dict.__getitem__
+        __setattr__ = dict.__setitem__
+        __delattr__ = dict.__delitem__
+
+        def __init__(self, dct):
+            self.dict = dct
+            for key, value in dct.items():
+                if hasattr(value, 'keys'):
+                    value = HParams(value)
+                self[key] = value
+
     class LMAdversarialModel(pl.LightningModule):
 
         def __init__(self, hparams):
@@ -304,7 +316,7 @@ if __name__ == '__main__':
     from pytorch_lightning import Trainer
     from pytorch_lightning.callbacks import ModelCheckpoint
 
-    MODEL_CONFIG = {
+    MODEL_CONFIG = HParams({
         'generator_lm': {
             'vocab_size': 12008,
             'embedding_size': 128,
@@ -333,7 +345,7 @@ if __name__ == '__main__':
             'num_classes': 1
         },
         'discriminator_loss_delta': 50
-    }
+    })
 
     model = LMAdversarialModel(MODEL_CONFIG)
 
