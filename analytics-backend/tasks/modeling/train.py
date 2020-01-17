@@ -67,6 +67,7 @@ if __name__ == '__main__':
     MAX_SEQUENCE_LENGTH = 128
 
     from model_lstm import LSTM_LM, LMClassifierHead, LMGeneratorHead
+    from model_transformer import TransformerLM
 
     class HParams(dict):
         __getattr__ = dict.__getitem__
@@ -86,20 +87,34 @@ if __name__ == '__main__':
             super(LMAdversarialModel, self).__init__()
             self.hparams = hparams
 
-            self.generator_lm = LSTM_LM(hparams['generator_lm'])
-            self.discriminator_lm = LSTM_LM(hparams['discriminator_lm'])
+            self.tie_encoder = hparams.get('tie_encoder', True)
+            self.tie_decoder = hparams.get('tie_decoder', True)
+
+            self.generator_lm = TransformerLM(hparams['generator_lm'])
+            self.discriminator_lm = TransformerLM(hparams['discriminator_lm'])
 
             self.generator_head = LMGeneratorHead(hparams['generator_head'])
             self.discriminator_head = LMClassifierHead(hparams['discriminator_head'])
             self.discriminator_loss_delta = hparams['discriminator_loss_delta']
 
-            self.generator_lm.embedding.weight = self.discriminator_lm.embedding.weight
-            self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
+            if self.tie_encoder:
+                self.generator_lm.embedding.weight = self.discriminator_lm.embedding.weight
+                self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
+                
+            if self.tie_decoder:
+                self.generator_head.decoder.weight = self.generator_lm.embedding.weight
+            
+            self.init_weights()
 
-            self.generator_head.decoder.weight = self.generator_lm.embedding.weight
+        def init_weights(self):
+            initrange = 0.1
+            self.generator_lm.embedding.weight.data.uniform_(-initrange, initrange)
+            self.generator_head.decoder.bias.data.zero_()
+            if not self.tie_decoder:
+                self.generator_head.decoder.weight.data.uniform_(-initrange, initrange)
 
-        def forward(self, tokens):
-            return self.discriminator_lm(tokens)
+        def forward(self, tokens, input_lengths=None):
+            return self.discriminator_lm(tokens, input_lengths)
 
         def training_step(self, batch, batch_idx):
             x, x_lengths = batch
@@ -314,7 +329,7 @@ if __name__ == '__main__':
             return result
 
         def configure_optimizers(self):
-            return torch.optim.AdamW(self.parameters())
+            return torch.optim.AdamW(self.parameters(), lr=3e-4)
 
         @pl.data_loader
         def train_dataloader(self):
@@ -344,33 +359,39 @@ if __name__ == '__main__':
 
     MODEL_CONFIG = HParams({
         'generator_lm': {
-            'vocab_size': 12008,
-            'embedding_size': 128,
-            'embedding_factor_size': 300,
-            'recurrent_dropout': .1,
-            'hidden_size': 800,
-            'n_layers': 3
+            'vocab_size': 12000,
+            'embedding_size': 48,
+            'embedding_factor_size': 64,
+            'num_attention_heads': 1,
+            'max_sequence_length': 128,
+            'dim_feedforward': 256,
+            'num_layers': 12,
+            'dropout': .1
         },
         'generator_head': {
-            'encoder_hidden_size': 800 * 2,
+            'encoder_hidden_size': 64,
             'vocab_size': 12008,
-            'embedding_size': 128,
-            'embedding_factor_size': 300
+            'embedding_size': 48,
+            'embedding_factor_size': 64
         },
         'discriminator_lm': {
-            'vocab_size': 12008,
+            'vocab_size': 12000,
             'embedding_size': 128,
-            'embedding_factor_size': 300,
-            'recurrent_dropout': .4,
-            'hidden_size': 1152,
-            'n_layers': 3
+            'embedding_factor_size': 256,
+            'num_attention_heads': 4,
+            'max_sequence_length': 128,
+            'dim_feedforward': 1024,
+            'num_layers': 12,
+            'dropout': .1
         },
         'discriminator_head': {
-            'encoder_hidden_size': 1152 * 2,
+            'encoder_hidden_size': 256,
             'hidden_size': 512,
             'num_classes': 1
         },
-        'discriminator_loss_delta': 50
+        'discriminator_loss_delta': 50,
+        'tie_encoder': False,
+        'tie_decoder': False
     })
 
     model = LMAdversarialModel(MODEL_CONFIG)
@@ -391,6 +412,7 @@ if __name__ == '__main__':
         row_log_interval=10,
         early_stop_callback=False,
         checkpoint_callback=checkpoint_callback,
-        val_percent_check=0.2
+        val_percent_check=0.2,
+        gradient_clip_val=.5,
     )
     trainer.fit(model)
