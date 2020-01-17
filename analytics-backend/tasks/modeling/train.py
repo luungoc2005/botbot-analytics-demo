@@ -155,9 +155,9 @@ if __name__ == '__main__':
                 reduction='mean'
             )
             
-            discriminator_accuracy = (
+            discriminator_accuracy = \
                 (
-                    x_discriminator > .5).float()[mask_positions] == \
+                    (x_discriminator > .5).float()[mask_positions] == \
                     adjusted_mask_positions[mask_positions]
                 ).float().mean()
             loss = generator_loss + discriminator_loss
@@ -219,9 +219,9 @@ if __name__ == '__main__':
                 x_discriminator, adjusted_mask_positions, 
                 reduction='mean'
             )
-            discriminator_accuracy = (
+            discriminator_accuracy = \
                 (
-                    x_discriminator > .5).float()[mask_positions] == \
+                    (x_discriminator > .5).float()[mask_positions] == \
                     adjusted_mask_positions[mask_positions]
                 ).float().mean()
 
