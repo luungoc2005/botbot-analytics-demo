@@ -89,7 +89,8 @@ class TransformerLM(nn.Module):
             self.embedding_factor_size,
             self.num_attention_heads, 
             self.dim_feedforward,
-            self.dropout
+            self.dropout,
+            activation='gelu'
         )
         encoder_norm = LayerNorm(self.embedding_factor_size, eps=1e-12)
         self.transformer_encoder = TiedTransformerEncoder(
