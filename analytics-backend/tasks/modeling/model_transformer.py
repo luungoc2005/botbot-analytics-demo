@@ -91,7 +91,7 @@ class TransformerLM(nn.Module):
             self.dim_feedforward,
             self.dropout
         )
-        encoder_norm = LayerNorm(self.embedding_factor_size)
+        encoder_norm = LayerNorm(self.embedding_factor_size, eps=1e-12)
         self.transformer_encoder = TiedTransformerEncoder(
             encoder_layers, 
             self.num_layers,
@@ -116,10 +116,10 @@ class TransformerLM(nn.Module):
         if input_lengths is None:
             x = self.transformer_encoder(x)
         else:
-            mask = torch.arange(self.max_sequence_length).unsqueeze(0).cuda() < input_lengths.unsqueeze(1)
+            mask = torch.arange(self.max_sequence_length).unsqueeze(0).cuda() >= input_lengths.unsqueeze(1)
 
             x = self.transformer_encoder(x, src_key_padding_mask=mask)
-        
+
         # then swap back
         x = x.permute(1, 0, 2)
 

@@ -16,7 +16,7 @@ train_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_train.h5')
 test_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_test.h5')
 CHECKPOINT_PATH = '/media/luungoc2005/Data/Projects/botbot-analytics-demo/checkpoints'
 VOCAB_PATH = '/home/luungoc2005/Documents/botbot-analytics-demo/analytics-backend/tasks/modeling/data/sentencepiece/en-vocab.txt'
-BATCH_SIZE = 128
+BATCH_SIZE = 80
 NUM_WORKERS = 7
 tokenizer = None
 
@@ -107,12 +107,12 @@ if __name__ == '__main__':
             self.init_weights()
 
         def init_weights(self):
-            initrange = 0.1
-            self.generator_lm.embedding.weight.data.uniform_(-initrange, initrange)
+            initrange = 0.02
+            self.generator_lm.embedding.weight.data.normal_(mean=0.0, std=initrange)
             self.generator_head.decoder.bias.data.zero_()
 
             if not self.tie_decoder:
-                self.generator_head.decoder.weight.data.uniform_(-initrange, initrange)
+                self.generator_head.decoder.weight.data.normal_(mean=0.0, std=initrange)
 
         def forward(self, tokens, input_lengths=None):
             return self.discriminator_lm(tokens, input_lengths)
@@ -331,6 +331,7 @@ if __name__ == '__main__':
 
         def configure_optimizers(self):
             num_warmup_steps = 10000
+            num_training_steps = -1
             weight_decay=0.01
 
             from torch.optim.lr_scheduler import LambdaLR
@@ -351,7 +352,7 @@ if __name__ == '__main__':
                     0.0, float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps))
                 )
 
-            optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=1e-4, eps=1e-6)
+            optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=5e-4, eps=1e-6)
             scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
             return [optimizer], [scheduler]
 
