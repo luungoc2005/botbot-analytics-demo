@@ -175,11 +175,15 @@ if __name__ == '__main__':
             x_discriminator = self.discriminator_lm(x_full_generator_result, input_lengths=x_lengths)
             x_discriminator = self.discriminator_head(x_discriminator).squeeze(-1)
 
+            length_mask_flattened = length_mask.view(-1)
+            discriminator_sample_size = length_mask.int().sum().item()
             discriminator_loss = F.binary_cross_entropy_with_logits(
                 x_discriminator, adjusted_mask_positions, 
-                reduction='mean'
+                reduction=('none' if discriminator_sample_size > 0 else 'mean')
             )
-            
+            if discriminator_sample_size > 0:
+                discriminator_loss = discriminator_loss[length_mask_flattened].sum() / discriminator_sample_size
+
             discriminator_accuracy = \
                 (
                     (x_discriminator > .5).float()[mask_positions] == \
@@ -242,10 +246,15 @@ if __name__ == '__main__':
             x_discriminator = self.discriminator_lm(x_full_generator_result, input_lengths=x_lengths)
             x_discriminator = self.discriminator_head(x_discriminator).squeeze(-1)
 
+            length_mask_flattened = length_mask.view(-1)
+            discriminator_sample_size = length_mask.int().sum().item()
             discriminator_loss = F.binary_cross_entropy_with_logits(
                 x_discriminator, adjusted_mask_positions, 
-                reduction='mean'
+                reduction=('none' if discriminator_sample_size > 0 else 'mean')
             )
+            if discriminator_sample_size > 0:
+                discriminator_loss = discriminator_loss[length_mask_flattened].sum() / discriminator_sample_size
+
             discriminator_accuracy = \
                 (
                     (x_discriminator > .5).float()[mask_positions] == \
