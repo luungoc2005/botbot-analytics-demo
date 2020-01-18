@@ -99,8 +99,9 @@ if __name__ == '__main__':
 
             if self.tie_encoder:
                 self.generator_lm.embedding.weight = self.discriminator_lm.embedding.weight
+                self.generator_lm.pos_embedding.weight = self.discriminator_lm.pos_embedding.weight
                 self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
-                
+
             if self.tie_decoder:
                 self.generator_head.decoder.weight = self.generator_lm.embedding.weight
             
@@ -109,13 +110,16 @@ if __name__ == '__main__':
         def init_weights(self):
             initrange = 0.06
             self.generator_lm.embedding.weight.data.normal_(mean=0.0, std=initrange)
-            self.generator_head.decoder.bias.data.zero_()
+            self.generator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=initrange)
 
             if not self.tie_encoder:
                 self.discriminator_lm.embedding.weight.data.normal_(mean=0.0, std=initrange)
+                self.discriminator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=initrange)
 
             if not self.tie_decoder:
                 self.generator_head.decoder.weight.data.normal_(mean=0.0, std=initrange)
+
+            self.generator_head.decoder.bias.data.zero_()
 
         def forward(self, tokens, input_lengths=None):
             return self.discriminator_lm(tokens, input_lengths)
@@ -129,6 +133,7 @@ if __name__ == '__main__':
             length_mask = torch.arange(x.size(1)).unsqueeze(0).cuda() < x_lengths.unsqueeze(1)
 
             mask_positions = (mask_probs <= .15).cuda().detach() & length_mask
+
             x_generator = x.clone()
             x_generator[mask_positions] = self.generator_lm.vocab_size - 1
 
@@ -199,6 +204,7 @@ if __name__ == '__main__':
             length_mask = torch.arange(x.size(1)).unsqueeze(0).cuda() < x_lengths.unsqueeze(1)
 
             mask_positions = (mask_probs <= .15).cuda().detach() & length_mask
+
             x_generator = x.clone()
             x_generator[mask_positions] = self.generator_lm.vocab_size - 1
 
@@ -391,19 +397,19 @@ if __name__ == '__main__':
     MODEL_CONFIG = HParams({
         'generator_lm': {
             'vocab_size': 12008,
-            'embedding_size': 64,
-            'embedding_factor_size': 64,
-            'num_attention_heads': 1,
+            'embedding_size': 128,
+            'embedding_factor_size': 256,
+            'num_attention_heads': 2,
             'max_sequence_length': 128,
             'dim_feedforward': 256,
             'num_layers': 12,
             'dropout': .1
         },
         'generator_head': {
-            'encoder_hidden_size': 64,
+            'encoder_hidden_size': 256,
             'vocab_size': 12008,
-            'embedding_size': 64,
-            'embedding_factor_size': 64
+            'embedding_size': 128,
+            'embedding_factor_size': 256
         },
         'discriminator_lm': {
             'vocab_size': 12008,
@@ -421,7 +427,7 @@ if __name__ == '__main__':
             'num_classes': 1
         },
         'discriminator_loss_delta': 20,
-        'tie_encoder': False,
+        'tie_encoder': True,
         'tie_decoder': True
     })
 
@@ -440,7 +446,7 @@ if __name__ == '__main__':
     trainer = Trainer(
         gpus=1, 
         use_amp=True,
-        weights_summary='full',
+        weights_summary='top',
         row_log_interval=10,
         early_stop_callback=False,
         checkpoint_callback=checkpoint_callback,
