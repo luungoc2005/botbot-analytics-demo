@@ -16,7 +16,7 @@ train_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_train.h5')
 test_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_test.h5')
 CHECKPOINT_PATH = '/media/luungoc2005/Data/Projects/botbot-analytics-demo/checkpoints'
 VOCAB_PATH = '/home/luungoc2005/Documents/botbot-analytics-demo/analytics-backend/tasks/modeling/data/sentencepiece/en-vocab.txt'
-BATCH_SIZE = 80
+BATCH_SIZE = 120
 NUM_WORKERS = 7
 tokenizer = None
 
@@ -350,11 +350,11 @@ if __name__ == '__main__':
             'embedding_size': 128,
             'embedding_factor_size': 300,
             'recurrent_dropout': .1,
-            'hidden_size': 800,
+            'hidden_size': 384,
             'n_layers': 3
         },
         'generator_head': {
-            'encoder_hidden_size': 800 * 2,
+            'encoder_hidden_size': 384 * 2,
             'vocab_size': 12008,
             'embedding_size': 128,
             'embedding_factor_size': 300
@@ -363,7 +363,7 @@ if __name__ == '__main__':
             'vocab_size': 12008,
             'embedding_size': 128,
             'embedding_factor_size': 300,
-            'recurrent_dropout': .4,
+            'recurrent_dropout': .25,
             'hidden_size': 1152,
             'n_layers': 3
         },
@@ -372,7 +372,7 @@ if __name__ == '__main__':
             'hidden_size': 512,
             'num_classes': 1
         },
-        'discriminator_loss_delta': 50
+        'discriminator_loss_delta': 25
     })
 
     model = LMAdversarialModel(MODEL_CONFIG)
