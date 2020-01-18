@@ -160,7 +160,7 @@ if __name__ == '__main__':
                     (x_discriminator > .5).float()[mask_positions] == \
                     adjusted_mask_positions[mask_positions]
                 ).float().mean()
-            loss = generator_loss + discriminator_loss
+            loss = generator_loss + self.discriminator_loss_delta * discriminator_loss
 
             tensorboard_logs = {
                 'train_loss': loss,
@@ -225,7 +225,7 @@ if __name__ == '__main__':
                     adjusted_mask_positions[mask_positions]
                 ).float().mean()
 
-            loss = generator_loss + discriminator_loss
+            loss = generator_loss + self.discriminator_loss_delta * discriminator_loss
 
             result = {
                 'batch_first_item': (x[0], x_lengths[0]),
