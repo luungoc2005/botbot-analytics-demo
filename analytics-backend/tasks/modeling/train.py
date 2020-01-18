@@ -107,9 +107,9 @@ if __name__ == '__main__':
 
             # indices to mask out
             mask_probs = torch.rand(x.size(0), x.size(1)).cuda()
-            length_mask = torch.arange(x.size(1)).unsqueeze(0).cuda() < input_lengths.unsqueeze(1)
+            length_mask = torch.arange(x.size(1)).unsqueeze(0).cuda() < x_lengths.unsqueeze(1)
 
-            mask_positions = (mask_probs <= .15 & length_mask).cuda().detach()
+            mask_positions = (mask_probs <= .15).cuda().detach() & length_mask
             x_generator = x.clone()
             x_generator[mask_positions] = self.generator_lm.vocab_size - 1
 
@@ -177,9 +177,9 @@ if __name__ == '__main__':
             x_lengths = x_lengths.squeeze(1)
 
             mask_probs = torch.rand(x.size(0), x.size(1)).cuda()
-            length_mask = torch.arange(x.size(1)).unsqueeze(0).cuda() < input_lengths.unsqueeze(1)
+            length_mask = torch.arange(x.size(1)).unsqueeze(0).cuda() < x_lengths.unsqueeze(1)
 
-            mask_positions = (mask_probs <= .15 & length_mask).cuda().detach()
+            mask_positions = (mask_probs <= .15).cuda().detach() & length_mask
             x_generator = x.clone()
             x_generator[mask_positions] = self.generator_lm.vocab_size - 1
 
