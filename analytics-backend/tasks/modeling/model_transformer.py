@@ -81,10 +81,6 @@ class TransformerLM(nn.Module):
         self.num_layers = self.config['num_layers']
         self.dropout = self.config['dropout']
 
-        self.pos_encoder = PositionalEncoding(self.embedding_size, 0., 
-            max_len=self.max_sequence_length
-        )
-
         encoder_layers = TransformerEncoderLayer(
             self.embedding_factor_size,
             self.num_attention_heads, 
@@ -100,17 +96,24 @@ class TransformerLM(nn.Module):
         )
         
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
+        self.pos_embedding = nn.Embedding(self.max_sequence_length, self.embedding_size)
         self.embedding_linear = nn.Linear(self.embedding_size, self.embedding_factor_size)
-
+        self.embedding_norm = LayerNorm(self.embedding_size, eps=1e-12)
 
     def forward(self, tokens, input_lengths=None):
+        device = tokens.device
+        position_ids = torch.arange(self.max_sequence_length, dtype=torch.long, device=device)
+        position_ids = position_ids.unsqueeze(0).expand(tokens.size())
+
         x = self.embedding(tokens)
+        x += self.pos_embedding(position_ids)
+        x = self.embedding_norm(x)
 
         # since pytorch transformer layers are seq_length first
         x = x.permute(1, 0, 2)
 
-        x = x * math.sqrt(self.embedding_size)
-        x = self.pos_encoder(x)
+        # x = x * math.sqrt(self.embedding_size)
+        # x = self.pos_encoder(x)
 
         x = self.embedding_linear(x)
 
