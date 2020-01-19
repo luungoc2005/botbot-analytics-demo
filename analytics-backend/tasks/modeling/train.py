@@ -406,7 +406,7 @@ if __name__ == '__main__':
             'vocab_size': 12008,
             'embedding_size': 128,
             'embedding_factor_size': 256,
-            'num_attention_heads': 2,
+            'num_attention_heads': 1,
             'max_sequence_length': 128,
             'dim_feedforward': 256,
             'num_layers': 12,
