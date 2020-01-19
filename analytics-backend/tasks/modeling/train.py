@@ -18,11 +18,21 @@ CHECKPOINT_PATH = '/media/luungoc2005/Data/Projects/botbot-analytics-demo/checkp
 VOCAB_PATH = '/home/luungoc2005/Documents/botbot-analytics-demo/analytics-backend/tasks/modeling/data/sentencepiece/en-vocab.txt'
 BATCH_SIZE = 120
 NUM_WORKERS = 7
+
+# MAX_SEQUENCE_LENGTH = 128
+MAX_SEQUENCE_LENGTH = 48
+
 tokenizer = None
 
 class HDF5Dataset(Dataset):
 
-    def __init__(self, h5_file_path, dataset_key="tokens", dataset_length_key="lengths", override_length=None):
+    def __init__(self, 
+        h5_file_path, 
+        dataset_key="tokens", 
+        dataset_length_key="lengths", 
+        override_length=None,
+        max_sequence_length=MAX_SEQUENCE_LENGTH
+    ):
         super(HDF5Dataset, self).__init__()
 
         self.h5_file_path = h5_file_path
@@ -30,6 +40,7 @@ class HDF5Dataset(Dataset):
         self.dataset_key = dataset_key
         self.dataset_length_key = dataset_length_key
         self.override_length = override_length
+        self.max_sequence_length = max_sequence_length
 
         with h5py.File(self.h5_file_path, 'r') as h5_file:
             self.dataset_length = h5_file[self.dataset_key].shape[0]
@@ -47,6 +58,10 @@ class HDF5Dataset(Dataset):
         rand_idx = random.randint(0, self.dataset_length - 1)
         tokens = torch.from_numpy(self._get_dataset()[self.dataset_key][rand_idx]).long()
         length = torch.LongTensor([self._get_dataset()[self.dataset_length_key][rand_idx]])
+
+        if tokens.size(0) > self.max_sequence_length:
+            tokens = tokens[:self.max_sequence_length]
+
         return (tokens, length)
 
 if __name__ == '__main__':
@@ -63,8 +78,6 @@ if __name__ == '__main__':
             strip_accents=False,
             lowercase=False
         )
-
-    MAX_SEQUENCE_LENGTH = 128
 
     from model_lstm import LSTM_LM, LMClassifierHead, LMGeneratorHead
 
