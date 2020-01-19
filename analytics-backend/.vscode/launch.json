@@ -5,16 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name":"tasks.training_stats",
-            "type":"python",
-            "request":"launch",
-            "module":"tasks.training_stats",
-            "console":"integratedTerminal",
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "tasks.training_stats",
+            "type": "python",
+            "request": "launch",
+            "module": "tasks.training_stats",
+            "console": "integratedTerminal",
             "env": {
                 "DEBUG": "1"
             },
             "args": [
-                "--file", "Francis.zip"
+                "--file",
+                "Francis.zip"
             ],
             "cwd": "/Users/luungoc2005/Documents/botbot-analytics/analytics-backend"
         }
