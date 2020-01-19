@@ -136,13 +136,14 @@ if __name__ == '__main__':
             sample_size = mask_positions.int().sum().item()
             flattened_mask_positions = mask_positions.view(-1)
 
+            generator_target = x.clone()
+            generator_target[~mask_positions] = -100 # ignore positions
             generator_loss = F.cross_entropy(
                 x_generator.view(x.size(0) * x.size(1), -1),
-                x.view(-1), 
-                reduction=('none' if sample_size > 0 else 'mean')
+                generator_target.view(-1), 
+                reduction='mean',
+                ignore_index=-100
             )
-            if sample_size > 0:
-                generator_loss = generator_loss[flattened_mask_positions].sum() / sample_size
 
             generator_accuracy = (
                 torch.max(
@@ -205,13 +206,14 @@ if __name__ == '__main__':
             sample_size = mask_positions.int().sum().item()
             flattened_mask_positions = mask_positions.view(-1)
 
+            generator_target = x.clone()
+            generator_target[~mask_positions] = -100 # ignore positions
             generator_loss = F.cross_entropy(
                 x_generator.view(x.size(0) * x.size(1), -1),
-                x.view(-1), 
-                reduction=('none' if sample_size > 0 else 'mean')
+                generator_target.view(-1), 
+                reduction='mean',
+                ignore_index=-100
             )
-            if sample_size > 0:
-                generator_loss = generator_loss[flattened_mask_positions].sum() / sample_size
 
             generator_accuracy = (
                 torch.max(
