@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 from os import path, getcwd
 
 import pytorch_lightning as pl
+from transformers import AlbertModel, AlbertConfig
 
 import h5py
 
@@ -17,7 +18,7 @@ train_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_train.h5')
 test_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_test.h5')
 CHECKPOINT_PATH = '/media/luungoc2005/Data/Projects/botbot-analytics-demo/checkpoints'
 VOCAB_PATH = '/home/luungoc2005/Documents/botbot-analytics-demo/analytics-backend/tasks/modeling/data/sentencepiece/en-vocab.txt'
-BATCH_SIZE = 80
+BATCH_SIZE = 128
 NUM_WORKERS = 7
 
 MAX_SEQUENCE_LENGTH = 80
@@ -103,44 +104,49 @@ if __name__ == '__main__':
             self.tie_encoder = hparams.get('tie_encoder', True)
             self.tie_decoder = hparams.get('tie_decoder', True)
 
-            self.generator_lm = TransformerLM(hparams['generator_lm'])
-            self.discriminator_lm = TransformerLM(hparams['discriminator_lm'])
+            self.generator_lm = AlbertModel(AlbertConfig(**hparams['generator_lm'].dict))
+            self.discriminator_lm = AlbertModel(AlbertConfig(**hparams['discriminator_lm'].dict))
 
             self.generator_head = LMGeneratorHead(hparams['generator_head'])
             self.discriminator_head = LMClassifierHead(hparams['discriminator_head'])
             self.discriminator_loss_delta = hparams['discriminator_loss_delta']
 
             if self.tie_encoder:
-                self.generator_lm.embedding.weight = self.discriminator_lm.embedding.weight
-                self.generator_lm.pos_embedding.weight = self.discriminator_lm.pos_embedding.weight
-
-                if list(self.discriminator_lm.embedding_linear.weight.size()) == \
-                    list(self.generator_lm.embedding_linear.weight.size()):
-                    self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
+                self.generator_lm.embeddings.word_embeddings.weight = \
+                    self.discriminator_lm.embeddings.word_embeddings.weight
+                self.generator_lm.embeddings.position_embeddings.weight = \
+                    self.discriminator_lm.embeddings.position_embeddings.weight
+                self.generator_lm.embeddings.token_type_embeddings.weight = \
+                    self.discriminator_lm.embeddings.token_type_embeddings.weight
 
             if self.tie_decoder:
-                self.generator_head.decoder.weight = self.generator_lm.embedding.weight
+                self.generator_head.decoder.weight = self.generator_lm.embeddings.word_embeddings.weight
             
-            self.init_weights()
+        #     self.init_weights()
 
-        def init_weights(self):
-            generator_std = 0.1 / math.sqrt(self.generator_lm.embedding.weight.size(1))
-            discriminator_std = 0.1 / math.sqrt(self.discriminator_lm.embedding.weight.size(1))
+        # def init_weights(self):
+        #     generator_std = 0.1 / math.sqrt(self.generator_lm.embedding.weight.size(1))
+        #     discriminator_std = 0.1 / math.sqrt(self.discriminator_lm.embedding.weight.size(1))
 
-            self.generator_lm.embedding.weight.data.normal_(mean=0.0, std=generator_std)
-            self.generator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=generator_std)
+        #     self.generator_lm.embedding.weight.data.normal_(mean=0.0, std=generator_std)
+        #     self.generator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=generator_std)
 
-            if not self.tie_encoder:
-                self.discriminator_lm.embedding.weight.data.normal_(mean=0.0, std=discriminator_std)
-                self.discriminator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=discriminator_std)
+        #     if not self.tie_encoder:
+        #         self.discriminator_lm.embedding.weight.data.normal_(mean=0.0, std=discriminator_std)
+        #         self.discriminator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=discriminator_std)
 
-            if not self.tie_decoder:
-                self.generator_head.decoder.weight.data.normal_(mean=0.0, std=discriminator_std)
+        #     if not self.tie_decoder:
+        #         self.generator_head.decoder.weight.data.normal_(mean=0.0, std=discriminator_std)
 
-            self.generator_head.decoder.bias.data.zero_()
+        #     self.generator_head.decoder.bias.data.zero_()
+
+        def generate_attention_mask(self, tokens, input_lengths):
+            max_seq_len = tokens.size(1)
+            return (torch.arange(max_seq_len).unsqueeze(0).cuda() < input_lengths.unsqueeze(1)).long()
 
         def forward(self, tokens, input_lengths=None):
-            return self.discriminator_lm(tokens, input_lengths)
+            return self.discriminator_lm(tokens, 
+                attention_mask=self.generate_attention_mask(tokens, input_lengths))
 
         def training_step(self, batch, batch_idx):
             x, x_lengths = batch
@@ -153,10 +159,13 @@ if __name__ == '__main__':
             mask_positions = (mask_probs <= .15).cuda().detach() & length_mask
 
             x_generator = x.clone()
-            x_generator[mask_positions] = self.generator_lm.vocab_size - 1
+            x_generator[mask_positions] = self.generator_lm.config.vocab_size - 1
 
             # generator
-            x_generator = self.generator_lm(x_generator, input_lengths=x_lengths)
+            x_generator = self.generator_lm(
+                x_generator, 
+                attention_mask=self.generate_attention_mask(x_generator, x_lengths)
+            )[0]
 
             # if sample_size == 0:
             # loss on the whole batch
@@ -191,7 +200,10 @@ if __name__ == '__main__':
             x_full_generator_result = x_full_generator_result.detach()
 
             # discriminator
-            x_discriminator = self.discriminator_lm(x_full_generator_result, input_lengths=x_lengths)
+            x_discriminator = self.discriminator_lm(
+                x_full_generator_result,
+                attention_mask=self.generate_attention_mask(x_full_generator_result, x_lengths)
+            )[0]
             x_discriminator = self.discriminator_head(x_discriminator).squeeze(-1)
 
             discriminator_sample_size = length_mask.int().sum().item()
@@ -228,9 +240,12 @@ if __name__ == '__main__':
             mask_positions = (mask_probs <= .15).cuda().detach() & length_mask
 
             x_generator = x.clone()
-            x_generator[mask_positions] = self.generator_lm.vocab_size - 1
+            x_generator[mask_positions] = self.generator_lm.config.vocab_size - 1
 
-            x_generator = self.generator_lm(x_generator, input_lengths=x_lengths)
+            x_generator = self.generator_lm(
+                x_generator, 
+                attention_mask=self.generate_attention_mask(x_generator, x_lengths)
+            )[0]
             x_generator = self.generator_head(x_generator)
 
             sample_size = mask_positions.int().sum().item()
@@ -262,7 +277,10 @@ if __name__ == '__main__':
             x_full_generator_result = x_full_generator_result.detach()
 
             # discriminator
-            x_discriminator = self.discriminator_lm(x_full_generator_result, input_lengths=x_lengths)
+            x_discriminator = self.discriminator_lm(
+                x_full_generator_result,
+                attention_mask=self.generate_attention_mask(x_full_generator_result, x_lengths)
+            )[0]
             x_discriminator = self.discriminator_head(x_discriminator).squeeze(-1)
 
             discriminator_sample_size = length_mask.int().sum().item()
@@ -309,7 +327,7 @@ if __name__ == '__main__':
                         result[key] = torch.stack([x[key] for x in outputs]).mean()
             
             # Sanity check
-            MASK_TOKEN = self.generator_lm.vocab_size - 1
+            MASK_TOKEN = self.generator_lm.config.vocab_size - 1
             if tokenizer is not None:
                 for ix in range(min(5, len(outputs))):
                     x_tokens, x_length = outputs[ix]['batch_first_item']
@@ -426,39 +444,39 @@ if __name__ == '__main__':
     MODEL_CONFIG = HParams({
         'generator_lm': {
             'vocab_size': 12008,
-            'embedding_size': 64,
-            'embedding_factor_size': 256,
+            'embedding_size': 128,
+            'hidden_size': 128,
             'num_attention_heads': 1,
-            'max_sequence_length': MAX_SEQUENCE_LENGTH,
-            'dim_feedforward': 512,
-            'num_layers': 4,
-            'num_layer_groups': 2,
-            'dropout': 0.
+            'max_position_embeddings': MAX_SEQUENCE_LENGTH,
+            'intermediate_size': 256,
+            'inner_group_num': 1,
+            'num_hidden_layers': 12,
+            'num_hidden_groups': 1,
         },
         'generator_head': {
-            'encoder_hidden_size': 256,
+            'encoder_hidden_size': 128,
             'vocab_size': 12008,
-            'embedding_size': 64,
-            'embedding_factor_size': 256
+            'embedding_size': 128,
+            'embedding_factor_size': 128
         },
         'discriminator_lm': {
             'vocab_size': 12008,
             'embedding_size': 128,
-            'embedding_factor_size': 512,
+            'hidden_size': 256,
             'num_attention_heads': 4,
-            'max_sequence_length': MAX_SEQUENCE_LENGTH,
-            'dim_feedforward': 2048,
-            'num_layers': 4,
-            'num_layer_groups': 2,
-            'dropout': 0.
+            'max_position_embeddings': MAX_SEQUENCE_LENGTH,
+            'intermediate_size': 1024,
+            'inner_group_num': 1,
+            'num_hidden_layers': 12,
+            'num_hidden_groups': 1,
         },
         'discriminator_head': {
-            'encoder_hidden_size': 512,
+            'encoder_hidden_size': 256,
             'hidden_size': 512,
             'num_classes': 1
         },
-        'discriminator_loss_delta': 10,
-        'tie_encoder': False,
+        'discriminator_loss_delta': 20,
+        'tie_encoder': True,
         'tie_decoder': True
     })
 
@@ -482,6 +500,7 @@ if __name__ == '__main__':
         early_stop_callback=False,
         checkpoint_callback=checkpoint_callback,
         val_percent_check=0.2,
-        gradient_clip_val=.3
+        gradient_clip_val=.3,
+        accumulate_grad_batches=1
     )
     trainer.fit(model)
