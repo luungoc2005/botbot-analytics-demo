@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import random
+import math
 
 from torch.utils.data import DataLoader, Dataset
 from os import path, getcwd
@@ -123,16 +124,18 @@ if __name__ == '__main__':
             self.init_weights()
 
         def init_weights(self):
-            initrange = 0.06
-            self.generator_lm.embedding.weight.data.normal_(mean=0.0, std=initrange)
-            self.generator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=initrange)
+            generator_std = 0.1 / math.sqrt(self.generator_lm.embedding.weight.size(1))
+            discriminator_std = 0.1 / math.sqrt(self.discriminator_lm.embedding.weight.size(1))
+
+            self.generator_lm.embedding.weight.data.normal_(mean=0.0, std=generator_std)
+            self.generator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=generator_std)
 
             if not self.tie_encoder:
-                self.discriminator_lm.embedding.weight.data.normal_(mean=0.0, std=initrange)
-                self.discriminator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=initrange)
+                self.discriminator_lm.embedding.weight.data.normal_(mean=0.0, std=discriminator_std)
+                self.discriminator_lm.pos_embedding.weight.data.normal_(mean=0.0, std=discriminator_std)
 
             if not self.tie_decoder:
-                self.generator_head.decoder.weight.data.normal_(mean=0.0, std=initrange)
+                self.generator_head.decoder.weight.data.normal_(mean=0.0, std=discriminator_std)
 
             self.generator_head.decoder.bias.data.zero_()
 
@@ -370,6 +373,7 @@ if __name__ == '__main__':
             weight_decay=0.01
 
             from torch.optim.lr_scheduler import LambdaLR
+            from lamb_optimizer import Lamb
 
             no_decay = ["bias", "LayerNorm.weight"]
             optimizer_grouped_parameters = [
@@ -383,14 +387,12 @@ if __name__ == '__main__':
                 },
             ]
 
-            optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=3e-4)
+            optimizer = Lamb(optimizer_grouped_parameters, lr=3e-4)
 
             def lr_lambda(current_step):
                 if current_step < num_warmup_steps:
                     return float(current_step) / float(max(1, num_warmup_steps))
-                return max(
-                    0.0, float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps))
-                )
+                return 1
 
             scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
             return [optimizer], [scheduler]
@@ -455,9 +457,9 @@ if __name__ == '__main__':
             'hidden_size': 512,
             'num_classes': 1
         },
-        'discriminator_loss_delta': 20,
+        'discriminator_loss_delta': 10,
         'tie_encoder': False,
-        'tie_decoder': False
+        'tie_decoder': True
     })
 
     model = LMAdversarialModel(MODEL_CONFIG)
@@ -480,6 +482,6 @@ if __name__ == '__main__':
         early_stop_callback=False,
         checkpoint_callback=checkpoint_callback,
         val_percent_check=0.2,
-        gradient_clip_val=.5
+        gradient_clip_val=.3
     )
     trainer.fit(model)
