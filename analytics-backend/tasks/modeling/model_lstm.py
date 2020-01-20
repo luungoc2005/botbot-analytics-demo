@@ -2,9 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import copy
 
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence, pad_packed_sequence
 from torch.utils.data import DataLoader, Dataset
+
+from lstm_stacks import BidirLSTMLayer, StackedBiLSTM, LSTMState
+from mog_lstm import MogrifierLSTMCell
 
 DEFAULT_LSTM_CONFIG = {
     'vocab_size': 12000,
@@ -45,28 +49,57 @@ class LSTM_LM(nn.Module):
         
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
         self.embedding_linear = nn.Linear(self.embedding_size, self.embedding_factor_size)
-        self.rnn = nn.LSTM(self.embedding_factor_size, self.hidden_size,
-            batch_first=True,
-            bidirectional=True,
-            num_layers=self.n_layers,
-            dropout=self.recurrent_dropout
+        # self.rnn = nn.LSTM(self.embedding_factor_size, self.hidden_size,
+        #     bidirectional=True,
+        #     num_layers=self.n_layers,
+        #     dropout=self.recurrent_dropout
+        # )
+        self.rnn = StackedBiLSTM(
+            self.n_layers,
+            BidirLSTMLayer,
+            self.recurrent_dropout,
+            [MogrifierLSTMCell, self.embedding_factor_size, self.hidden_size],
+            [MogrifierLSTMCell, self.hidden_size * 2, self.hidden_size]
         )
-        
+
+    def init_hidden(self, batch_size):
+        weight = next(self.parameters()).data
+
+        return [
+            [
+                LSTMState(
+                    torch.zeros(batch_size, self.hidden_size).cuda(),
+                    torch.zeros(batch_size, self.hidden_size).cuda()
+                ) # forward & backward
+                for _ in range(2) # directions
+            ]
+            for _ in range(self.n_layers) # layers
+        ]
+        # return weight.new(self.n_layers, batch_size, self.hidden_size).zero_(), \
+        #     weight.new(self.n_layers, batch_size, self.hidden_size).zero_()
+
+
     def forward(self, tokens, input_lengths=None, pool=False):
         x = self.embedding(tokens)
         x = self.embedding_linear(x)
 
+        x = x.permute(1, 0, 2)
+
+        hidden_states = self.init_hidden(tokens.size(0))
+
         if input_lengths is not None:
-            x = pack_padded_sequence(x, input_lengths, 
-                batch_first=True, 
-                enforce_sorted=False
-            )
+            # x = pack_padded_sequence(x, input_lengths,
+            #     enforce_sorted=False
+            # )
 
-            x = self.rnn(x)[0]
+            x, hidden_states = self.rnn(x, hidden_states)
+            # x = PackedSequence(outputs, x.batch_sizes, x.sorted_indices, x.unsorted_indices)
 
-            x = pad_packed_sequence(x, batch_first=True, total_length=tokens.size(1))[0]
+            # x = pad_packed_sequence(x, total_length=tokens.size(1))[0]
         else:
-            x = self.rnn(x)[0]
+            x, hidden_states = self.rnn(x)
+
+        x = x.permute(1, 0, 2)
 
         if pool:
             # x[x == 0] = -1e8

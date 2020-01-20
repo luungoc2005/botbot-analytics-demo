@@ -17,11 +17,10 @@ train_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_train.h5')
 test_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_test.h5')
 CHECKPOINT_PATH = '/media/luungoc2005/Data/Projects/botbot-analytics-demo/checkpoints'
 VOCAB_PATH = '/home/luungoc2005/Documents/botbot-analytics-demo/analytics-backend/tasks/modeling/data/sentencepiece/en-vocab.txt'
-BATCH_SIZE = 120
+BATCH_SIZE = 80
 NUM_WORKERS = 7
 
-# MAX_SEQUENCE_LENGTH = 128
-MAX_SEQUENCE_LENGTH = 48
+MAX_SEQUENCE_LENGTH = 128
 
 tokenizer = None
 
@@ -100,6 +99,9 @@ if __name__ == '__main__':
             super(LMAdversarialModel, self).__init__()
             self.hparams = hparams
 
+            self.tie_encoder = hparams.get('tie_encoder', True)
+            self.tie_decoder = hparams.get('tie_decoder', True)
+
             self.generator_lm = LSTM_LM(hparams['generator_lm'])
             self.discriminator_lm = LSTM_LM(hparams['discriminator_lm'])
 
@@ -111,6 +113,33 @@ if __name__ == '__main__':
             self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
 
             self.generator_head.decoder.weight = self.generator_lm.embedding.weight
+
+            if self.tie_encoder:
+                self.generator_lm.embedding.weight = self.discriminator_lm.embedding.weight
+                # self.generator_lm.pos_embedding.weight = self.discriminator_lm.pos_embedding.weight
+
+                if list(self.discriminator_lm.embedding_linear.weight.size()) == \
+                    list(self.generator_lm.embedding_linear.weight.size()):
+                    self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
+
+            if self.tie_decoder:
+                self.generator_head.decoder.weight = self.generator_lm.embedding.weight
+            
+            self.init_weights()
+
+        def init_weights(self):
+            generator_std = 0.1 / math.sqrt(self.generator_lm.embedding.weight.size(1))
+            discriminator_std = 0.1 / math.sqrt(self.discriminator_lm.embedding.weight.size(1))
+
+            self.generator_lm.embedding.weight.data.normal_(mean=0.0, std=generator_std)
+
+            if not self.tie_encoder:
+                self.discriminator_lm.embedding.weight.data.normal_(mean=0.0, std=discriminator_std)
+
+            if not self.tie_decoder:
+                self.generator_head.decoder.weight.data.normal_(mean=0.0, std=discriminator_std)
+
+            self.generator_head.decoder.bias.data.zero_()
 
         def forward(self, tokens):
             return self.discriminator_lm(tokens)
@@ -339,20 +368,23 @@ if __name__ == '__main__':
             return result
 
         def configure_optimizers(self):
-            num_warmup_steps = 5000
-            num_training_steps = -1
-            weight_decay=0.01
-            from torch.optim.lr_scheduler import LambdaLR
-            from lamb_optimizer import LambdaLR
+            from lamb_optimizer import Lamb
+            return Lamb(self.parameters(), lr=1e-3)
+
+            # num_warmup_steps = 5000
+            # num_training_steps = -1
+            # weight_decay=0.01
+            # from torch.optim.lr_scheduler import LambdaLR
+            # from lamb_optimizer import Lamb
             
-            optimizer = Lamb(optimizer_grouped_parameters, lr=1e-3)
-            def lr_lambda(current_step):
-                if current_step < num_warmup_steps:
-                    return float(current_step) / float(max(1, num_warmup_steps))
-                return 1
-            scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
+            # optimizer = Lamb(optimizer_grouped_parameters, lr=1e-3)
+            # def lr_lambda(current_step):
+            #     if current_step < num_warmup_steps:
+            #         return float(current_step) / float(max(1, num_warmup_steps))
+            #     return 1
+            # scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
             
-            return [optimizer], [scheduler]
+            # return [optimizer], [scheduler]
 
         @pl.data_loader
         def train_dataloader(self):
@@ -387,7 +419,7 @@ if __name__ == '__main__':
             'embedding_factor_size': 300,
             'recurrent_dropout': .1,
             'hidden_size': 384,
-            'n_layers': 3
+            'n_layers': 2
         },
         'generator_head': {
             'encoder_hidden_size': 384 * 2,
@@ -401,15 +433,15 @@ if __name__ == '__main__':
             'embedding_factor_size': 300,
             'recurrent_dropout': .25,
             'hidden_size': 1152,
-            'n_layers': 3
+            'n_layers': 2
         },
         'discriminator_head': {
             'encoder_hidden_size': 1152 * 2,
             'hidden_size': 512,
             'num_classes': 1
         },
-        'discriminator_loss_delta': 25
-        'tie_encoder': False,
+        'discriminator_loss_delta': 25,
+        'tie_encoder': True,
         'tie_decoder': True
     })
 
