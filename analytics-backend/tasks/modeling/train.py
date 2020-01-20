@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import random
+import math
 
 from torch.utils.data import DataLoader, Dataset
 from os import path, getcwd
@@ -338,7 +339,20 @@ if __name__ == '__main__':
             return result
 
         def configure_optimizers(self):
-            return torch.optim.AdamW(self.parameters())
+            num_warmup_steps = 5000
+            num_training_steps = -1
+            weight_decay=0.01
+            from torch.optim.lr_scheduler import LambdaLR
+            from lamb_optimizer import LambdaLR
+            
+            optimizer = Lamb(optimizer_grouped_parameters, lr=1e-3)
+            def lr_lambda(current_step):
+                if current_step < num_warmup_steps:
+                    return float(current_step) / float(max(1, num_warmup_steps))
+                return 1
+            scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
+            
+            return [optimizer], [scheduler]
 
         @pl.data_loader
         def train_dataloader(self):
@@ -395,6 +409,8 @@ if __name__ == '__main__':
             'num_classes': 1
         },
         'discriminator_loss_delta': 25
+        'tie_encoder': False,
+        'tie_decoder': True
     })
 
     model = LMAdversarialModel(MODEL_CONFIG)
