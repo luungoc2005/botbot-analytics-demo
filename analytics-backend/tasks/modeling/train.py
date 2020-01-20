@@ -369,7 +369,6 @@ if __name__ == '__main__':
 
         def configure_optimizers(self):
             num_warmup_steps = 10000
-            num_training_steps = -1
             weight_decay=0.01
 
             from torch.optim.lr_scheduler import LambdaLR
@@ -392,9 +391,8 @@ if __name__ == '__main__':
             def lr_lambda(current_step):
                 if current_step < num_warmup_steps:
                     return float(current_step) / float(max(1, num_warmup_steps))
-                return max(
-                    0.0, float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps))
-                )
+                else:
+                    return 1.0
 
             scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
             return [optimizer], [scheduler]
