@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import torch.utils.checkpoint as checkpoint
 from torch.nn import TransformerEncoder, TransformerEncoderLayer, LayerNorm
 
 DEFAULT_TRANSFORMER_CONFIG = {
@@ -16,6 +17,7 @@ DEFAULT_TRANSFORMER_CONFIG = {
     'max_sequence_length': 128,
     'dim_feedforward': 512,
     'num_layers': 12,
+    'num_layer_groups': 1,
     'dropout': .1
 }
 
@@ -79,21 +81,27 @@ class TransformerLM(nn.Module):
         self.max_sequence_length = self.config['max_sequence_length']
         self.dim_feedforward = self.config['dim_feedforward']
         self.num_layers = self.config['num_layers']
+        self.num_layer_groups = self.config['num_layer_groups']
         self.dropout = self.config['dropout']
 
-        encoder_layers = TransformerEncoderLayer(
-            self.embedding_factor_size,
-            self.num_attention_heads, 
-            self.dim_feedforward,
-            self.dropout,
-            activation='gelu'
-        )
-        encoder_norm = LayerNorm(self.embedding_factor_size, eps=1e-12)
-        self.transformer_encoder = TiedTransformerEncoder(
-            encoder_layers, 
-            self.num_layers,
-            encoder_norm
-        )
+        assert self.num_layers % self.num_layer_groups == 0
+
+        transformer_layer_groups = []
+        for _ in range(self.num_layer_groups):
+            encoder_layers = TransformerEncoderLayer(
+                self.embedding_factor_size,
+                self.num_attention_heads, 
+                self.dim_feedforward,
+                self.dropout,
+                activation='gelu'
+            )
+            encoder_norm = LayerNorm(self.embedding_factor_size, eps=1e-12)
+            transformer_layer_groups.append(TiedTransformerEncoder(
+                encoder_layers, 
+                self.num_layers,
+                encoder_norm
+            ))
+        self.transformer_encoder = nn.ModuleList(transformer_layer_groups)
         
         self.embedding = nn.Embedding(self.vocab_size, self.embedding_size)
         self.pos_embedding = nn.Embedding(self.max_sequence_length, self.embedding_size)
@@ -117,12 +125,13 @@ class TransformerLM(nn.Module):
 
         x = self.embedding_linear(x)
 
-        if input_lengths is None:
-            x = self.transformer_encoder(x)
-        else:
+        mask = None
+        if input_lengths is not None:
             mask = torch.arange(self.max_sequence_length).unsqueeze(0).cuda() >= input_lengths.unsqueeze(1)
 
-            x = self.transformer_encoder(x, src_key_padding_mask=mask)
+        for layer_ix in range(self.num_layer_groups):
+            for _ in range(self.num_layers // self.num_layer_groups):
+                x = self.transformer_encoder[layer_ix](x, src_key_padding_mask=mask)
 
         # then swap back
         x = x.permute(1, 0, 2)

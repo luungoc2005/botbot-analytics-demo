@@ -16,11 +16,10 @@ train_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_train.h5')
 test_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_test.h5')
 CHECKPOINT_PATH = '/media/luungoc2005/Data/Projects/botbot-analytics-demo/checkpoints'
 VOCAB_PATH = '/home/luungoc2005/Documents/botbot-analytics-demo/analytics-backend/tasks/modeling/data/sentencepiece/en-vocab.txt'
-BATCH_SIZE = 128
+BATCH_SIZE = 80
 NUM_WORKERS = 7
 
-# MAX_SEQUENCE_LENGTH = 128
-MAX_SEQUENCE_LENGTH = 48
+MAX_SEQUENCE_LENGTH = 80
 
 tokenizer = None
 
@@ -113,7 +112,10 @@ if __name__ == '__main__':
             if self.tie_encoder:
                 self.generator_lm.embedding.weight = self.discriminator_lm.embedding.weight
                 self.generator_lm.pos_embedding.weight = self.discriminator_lm.pos_embedding.weight
-                self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
+
+                if list(self.discriminator_lm.embedding_linear.weight.size()) == \
+                    list(self.generator_lm.embedding_linear.weight.size()):
+                    self.discriminator_lm.embedding_linear.weight = self.discriminator_lm.embedding_linear.weight
 
             if self.tie_decoder:
                 self.generator_head.decoder.weight = self.generator_lm.embedding.weight
@@ -375,10 +377,13 @@ if __name__ == '__main__':
                     "params": [p for n, p in self.named_parameters() if not any(nd in n for nd in no_decay)],
                     "weight_decay": weight_decay,
                 },
-                {"params": [p for n, p in self.named_parameters() if any(nd in n for nd in no_decay)], "weight_decay": 0.0},
+                {
+                    "params": [p for n, p in self.named_parameters() if any(nd in n for nd in no_decay)], 
+                    "weight_decay": 0.0
+                },
             ]
 
-            optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=5e-4, eps=1e-6)
+            optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=3e-4)
 
             def lr_lambda(current_step):
                 if current_step < num_warmup_steps:
@@ -419,38 +424,40 @@ if __name__ == '__main__':
     MODEL_CONFIG = HParams({
         'generator_lm': {
             'vocab_size': 12008,
-            'embedding_size': 128,
+            'embedding_size': 64,
             'embedding_factor_size': 256,
             'num_attention_heads': 1,
-            'max_sequence_length': 128,
-            'dim_feedforward': 256,
-            'num_layers': 12,
-            'dropout': .1
+            'max_sequence_length': MAX_SEQUENCE_LENGTH,
+            'dim_feedforward': 512,
+            'num_layers': 4,
+            'num_layer_groups': 2,
+            'dropout': 0.
         },
         'generator_head': {
             'encoder_hidden_size': 256,
             'vocab_size': 12008,
-            'embedding_size': 128,
+            'embedding_size': 64,
             'embedding_factor_size': 256
         },
         'discriminator_lm': {
             'vocab_size': 12008,
             'embedding_size': 128,
-            'embedding_factor_size': 256,
+            'embedding_factor_size': 512,
             'num_attention_heads': 4,
-            'max_sequence_length': 128,
-            'dim_feedforward': 1024,
-            'num_layers': 12,
-            'dropout': .1
+            'max_sequence_length': MAX_SEQUENCE_LENGTH,
+            'dim_feedforward': 2048,
+            'num_layers': 4,
+            'num_layer_groups': 2,
+            'dropout': 0.
         },
         'discriminator_head': {
-            'encoder_hidden_size': 256,
+            'encoder_hidden_size': 512,
             'hidden_size': 512,
             'num_classes': 1
         },
         'discriminator_loss_delta': 20,
-        'tie_encoder': True,
-        'tie_decoder': True
+        'tie_encoder': False,
+        'tie_decoder': False
     })
 
     model = LMAdversarialModel(MODEL_CONFIG)
@@ -473,6 +480,6 @@ if __name__ == '__main__':
         early_stop_callback=False,
         checkpoint_callback=checkpoint_callback,
         val_percent_check=0.2,
-        gradient_clip_val=1.0
+        gradient_clip_val=.5
     )
     trainer.fit(model)
