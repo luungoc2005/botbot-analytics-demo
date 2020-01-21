@@ -1,8 +1,8 @@
 import os
 
-if os.environ.get("DEBUG", None) is None:
-    from gevent import monkey
-    monkey.patch_all()
+# if os.environ.get("DEBUG", None) is None:
+from gevent import monkey
+monkey.patch_all()
 
 from flask import Flask, Blueprint, request
 from flask_cors import CORS

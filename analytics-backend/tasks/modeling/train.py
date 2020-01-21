@@ -20,8 +20,7 @@ VOCAB_PATH = '/home/luungoc2005/Documents/botbot-analytics-demo/analytics-backen
 BATCH_SIZE = 120
 NUM_WORKERS = 7
 
-# MAX_SEQUENCE_LENGTH = 128
-MAX_SEQUENCE_LENGTH = 48
+MAX_SEQUENCE_LENGTH = 128
 
 tokenizer = None
 
