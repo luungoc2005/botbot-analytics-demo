@@ -457,11 +457,26 @@ export const TrainingStatsPage = () => {
           disabled={testQueryLoading}
           onChange={(_, value) => setTestQueryValue(value)}
         />
-        <DefaultButton
-          text="Enter"
-          disabled={testQueryLoading}
-          onClick={() => fetchTrainingTestQuery()}
-        />
+
+        <Stack horizontal tokens={{
+          childrenGap: 20,
+        }}>
+          <DefaultButton
+            text="Enter"
+            disabled={testQueryLoading}
+            onClick={() => fetchTrainingTestQuery()}
+          />
+
+          {testQueryLoading && <Spinner 
+            label="Loading..." 
+            ariaLive="assertive" 
+            labelPosition="left"
+            style={{
+              justifyContent: 'left',
+            }}
+          />}
+        </Stack>
+
         {testQueryData && <>
           
           <Text variant="large">Model Attributions</Text>

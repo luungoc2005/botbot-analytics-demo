@@ -18,6 +18,9 @@ from os import listdir, path, makedirs
 
 import json
 
+def swish_activation(input_tensor):
+    return input_tensor * torch.sigmoid(input_tensor)
+
 class DfTrainingDataset(Dataset):
 
     def __init__(self, file_path):
@@ -176,7 +179,7 @@ class LSTMTextClassifier(pl.LightningModule):
     def train_dataloader(self):
         if self.train_dataset is None:
             raise ValueError('Model was initialized without any training dataset')
-        return DataLoader(self.train_dataset, batch_size=200)
+        return DataLoader(self.train_dataset, batch_size=200, shuffle=True)
         
 
 DEFAULT_CNN_CONFIG = {
@@ -208,7 +211,7 @@ class CNNTextClassifier(pl.LightningModule):
         self.embedding_factor_size = self.config['embedding_factor_size']
         self.train_dataset = train_dataset
         self.has_contexts = train_dataset.has_contexts
-        self.batch_size = 64
+        self.batch_size = 32
 
         self.emb_factor_layer = nn.Linear(
             self.embedding_size,
@@ -241,7 +244,7 @@ class CNNTextClassifier(pl.LightningModule):
         x = x.permute(0, 2, 1)
         #embedded = [batch size, emb dim, sent len]
 
-        x = [F.relu(conv(x)) for conv in self.convs]
+        x = [F.gelu(conv(x)) for conv in self.convs]
         #conved_n = [batch size, n_filters, sent len - filter_sizes[n] + 1]
 
         x = [F.max_pool1d(conv, conv.shape[2]).squeeze(2) for conv in x]
@@ -280,21 +283,21 @@ class CNNTextClassifier(pl.LightningModule):
         #     lr=0
         #     momentum=0.9
         # )
-        sched = optim.lr_scheduler.OneCycleLR(
-            opt, 
-            max_lr=0.01, 
-            steps_per_epoch=int(len(self.train_dataset) // self.batch_size), 
-            epochs=20
-        )
-        # sched = optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        #     opt,
-        #     int(len(self.train_dataset) // self.batch_size) + 1
+        # sched = optim.lr_scheduler.OneCycleLR(
+        #     opt, 
+        #     max_lr=0.01, 
+        #     steps_per_epoch=int(len(self.train_dataset) // self.batch_size), 
+        #     epochs=20
         # )
+        sched = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            opt,
+            int(len(self.train_dataset) // self.batch_size) + 1
+        )
         return [opt], [sched]
 
     @pl.data_loader
     def train_dataloader(self):
         if self.train_dataset is None:
             raise ValueError('Model was initialized without any training dataset')
-        return DataLoader(self.train_dataset, batch_size=self.batch_size)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
         

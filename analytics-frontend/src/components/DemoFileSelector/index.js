@@ -89,7 +89,7 @@ export const DemoFileSelector = ({ onDemoFileClick = null }) => {
         onRenderCell={(item, index) => <CompoundButton
           key={index}
           toggle
-          checked={Boolean(demoFile === item)}
+          checked={Boolean(demoFile === item.name)}
           style={{ padding: 0 }}
           onClick={() => onDemoFileClick && onDemoFileClick(item.name)}
           className={classNames.listGridExampleTile}
