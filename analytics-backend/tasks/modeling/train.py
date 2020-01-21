@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 from os import path, getcwd
 
 import pytorch_lightning as pl
-from transformers import AlbertModel, AlbertConfig
+from transformers import AlbertModel, AlbertConfig, BertModel, BertConfig
 
 import h5py
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
             self.tie_encoder = hparams.get('tie_encoder', True)
             self.tie_decoder = hparams.get('tie_decoder', True)
 
-            self.generator_lm = AlbertModel(AlbertConfig(**hparams['generator_lm'].dict))
+            self.generator_lm = BertModel(BertConfig(**hparams['generator_lm'].dict))
             self.discriminator_lm = AlbertModel(AlbertConfig(**hparams['discriminator_lm'].dict))
 
             self.generator_head = LMGeneratorHead(hparams['generator_head'])
@@ -404,7 +404,8 @@ if __name__ == '__main__':
                 },
             ]
 
-            optimizer = Lamb(optimizer_grouped_parameters, lr=3e-4)
+            # optimizer = Lamb(optimizer_grouped_parameters, lr=5e-4)
+            optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=5e-4)
 
             def lr_lambda(current_step):
                 if current_step < num_warmup_steps:
@@ -450,7 +451,7 @@ if __name__ == '__main__':
             'max_position_embeddings': MAX_SEQUENCE_LENGTH,
             'intermediate_size': 256,
             'inner_group_num': 1,
-            'num_hidden_layers': 12,
+            'num_hidden_layers': 8,
             'num_hidden_groups': 1,
         },
         'generator_head': {
@@ -467,7 +468,7 @@ if __name__ == '__main__':
             'max_position_embeddings': MAX_SEQUENCE_LENGTH,
             'intermediate_size': 1024,
             'inner_group_num': 1,
-            'num_hidden_layers': 12,
+            'num_hidden_layers': 8,
             'num_hidden_groups': 1,
         },
         'discriminator_head': {
@@ -500,7 +501,7 @@ if __name__ == '__main__':
         early_stop_callback=False,
         checkpoint_callback=checkpoint_callback,
         val_percent_check=0.2,
-        gradient_clip_val=.3,
+        gradient_clip_val=1.,
         accumulate_grad_batches=1
     )
     trainer.fit(model)
