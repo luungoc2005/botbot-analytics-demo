@@ -79,6 +79,19 @@ if __name__ == '__main__':
             lowercase=False
         )
 
+    def get_whole_word_mask(vocab_size):
+        connect_sign = tokenizer._parameters['wordpieces_prefix']
+        def is_beginning_of_word(i):
+            # TODO: special tokens?
+            try:
+                return tokenizer.id_to_token(i).startswith(connect_sign)
+            except:
+                return False
+        mask_whole_words = torch.ByteTensor(list(
+            map(is_beginning_of_word, range(vocab_size))
+        ))
+        return mask_whole_words
+
     from model_lstm import LSTM_LM, LMClassifierHead, LMGeneratorHead
     from model_transformer import TransformerLM
 
@@ -122,6 +135,31 @@ if __name__ == '__main__':
                 self.generator_head.decoder.weight = self.generator_lm.embedding.weight
             
             self.init_weights()
+            # setup whole word masking
+            self.mask_whole_words = get_whole_word_mask(
+                self.generator_lm.embedding.weight.size(0)
+            ).cuda()
+            self._whole_words_cache_for_batch_size = {}
+
+        def _generate_mask(self, tokens, input_lengths):
+            batch_size = tokens.size(0)
+            length_mask = torch.arange(tokens.size(1)).unsqueeze(0).cuda() < input_lengths.unsqueeze(1)
+
+            word_cont_mask = self._whole_words_cache_for_batch_size.get(batch_size)
+            if word_cont_mask is None:
+                word_cont_mask = self.mask_whole_words.\
+                    expand(tokens.size(0), -1)
+                self._whole_words_cache_for_batch_size[batch_size] = word_cont_mask
+            
+            mask_positions = (torch.cuda.FloatTensor(*tokens.size()).uniform_() < .15) & length_mask
+
+            word_fill_mask = word_cont_mask.gather(1, tokens)
+            word_fill_mask[:,:word_fill_mask.size(1) - 1] = word_fill_mask[:,1:]
+            word_fill_mask[:,-1] = False
+
+            mask_positions = (mask_positions.bool() | word_fill_mask.bool()) & length_mask.bool()
+            
+            return mask_positions, length_mask
 
         def init_weights(self):
             generator_std = 0.1 / math.sqrt(self.generator_lm.embedding.weight.size(1))
@@ -147,10 +185,7 @@ if __name__ == '__main__':
             x_lengths = x_lengths.squeeze(1)
 
             # indices to mask out
-            mask_probs = torch.rand(x.size(0), x.size(1)).cuda()
-            length_mask = torch.arange(x.size(1)).unsqueeze(0).cuda() < x_lengths.unsqueeze(1)
-
-            mask_positions = (mask_probs <= .15).cuda().detach() & length_mask
+            mask_positions, length_mask = self._generate_mask(x, x_lengths)
 
             x_generator = x.clone()
             x_generator[mask_positions] = self.generator_lm.vocab_size - 1
@@ -222,10 +257,7 @@ if __name__ == '__main__':
             x, x_lengths = batch
             x_lengths = x_lengths.squeeze(1)
 
-            mask_probs = torch.rand(x.size(0), x.size(1)).cuda()
-            length_mask = torch.arange(x.size(1)).unsqueeze(0).cuda() < x_lengths.unsqueeze(1)
-
-            mask_positions = (mask_probs <= .15).cuda().detach() & length_mask
+            mask_positions, length_mask = self._generate_mask(x, x_lengths)
 
             x_generator = x.clone()
             x_generator[mask_positions] = self.generator_lm.vocab_size - 1
