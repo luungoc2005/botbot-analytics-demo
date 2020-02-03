@@ -375,7 +375,7 @@ if __name__ == '__main__':
         def configure_optimizers(self):
             from lamb_optimizer import Lamb
             
-            optimizer = Lamb(self.parameters(), lr=1e-3)
+            optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
 
             return optimizer
             # num_warmup_steps = 5000
@@ -425,11 +425,11 @@ if __name__ == '__main__':
             'embedding_size': 128,
             'embedding_factor_size': 300,
             'recurrent_dropout': .25,
-            'hidden_size': 512,
+            'hidden_size': 768,
             'n_layers': 3
         },
         'generator_head': {
-            'encoder_hidden_size': 512 * 2,
+            'encoder_hidden_size': 768 * 2,
             'vocab_size': 12008,
             'embedding_size': 128,
             'embedding_factor_size': 300
