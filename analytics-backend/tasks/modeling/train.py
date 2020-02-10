@@ -17,7 +17,7 @@ train_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_train.h5')
 test_dataset_path = path.join(getcwd(), 'tasks/modeling/data/data_test.h5')
 CHECKPOINT_PATH = '/media/luungoc2005/Data/Projects/botbot-analytics-demo/checkpoints'
 VOCAB_PATH = '/home/luungoc2005/Documents/botbot-analytics-demo/analytics-backend/tasks/modeling/data/sentencepiece/en-vocab.txt'
-BATCH_SIZE = 80
+BATCH_SIZE = 48
 NUM_WORKERS = 7
 
 MAX_SEQUENCE_LENGTH = 80
@@ -404,6 +404,8 @@ if __name__ == '__main__':
             num_training_steps = -1
             weight_decay=0.01
 
+            self.cuda()
+
             from torch.optim.lr_scheduler import LambdaLR
             from lamb_optimizer import Lamb
 
@@ -419,14 +421,12 @@ if __name__ == '__main__':
                 },
             ]
 
-            optimizer = Lamb(optimizer_grouped_parameters, lr=3e-4)
+            optimizer = optim.Adagrad(optimizer_grouped_parameters, lr=.05)
 
             def lr_lambda(current_step):
                 if current_step < num_warmup_steps:
                     return float(current_step) / float(max(1, num_warmup_steps))
-                return max(
-                    0.0, float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps))
-                )
+                return 1
 
             scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
             return [optimizer], [scheduler]
@@ -460,39 +460,39 @@ if __name__ == '__main__':
     MODEL_CONFIG = HParams({
         'generator_lm': {
             'vocab_size': 12008,
-            'embedding_size': 64,
+            'embedding_size': 128,
             'embedding_factor_size': 256,
             'num_attention_heads': 1,
             'max_sequence_length': MAX_SEQUENCE_LENGTH,
             'dim_feedforward': 512,
-            'num_layers': 4,
-            'num_layer_groups': 2,
+            'num_layers': 8,
+            'num_layer_groups': 1,
             'dropout': 0.
         },
         'generator_head': {
             'encoder_hidden_size': 256,
             'vocab_size': 12008,
-            'embedding_size': 64,
+            'embedding_size': 128,
             'embedding_factor_size': 256
         },
         'discriminator_lm': {
             'vocab_size': 12008,
             'embedding_size': 128,
-            'embedding_factor_size': 512,
+            'embedding_factor_size': 256,
             'num_attention_heads': 4,
             'max_sequence_length': MAX_SEQUENCE_LENGTH,
             'dim_feedforward': 2048,
-            'num_layers': 4,
-            'num_layer_groups': 2,
+            'num_layers': 8,
+            'num_layer_groups': 1,
             'dropout': 0.
         },
         'discriminator_head': {
-            'encoder_hidden_size': 512,
+            'encoder_hidden_size': 256,
             'hidden_size': 512,
             'num_classes': 1
         },
-        'discriminator_loss_delta': 10,
-        'tie_encoder': False,
+        'discriminator_loss_delta': 20,
+        'tie_encoder': True,
         'tie_decoder': True
     })
 
@@ -516,6 +516,7 @@ if __name__ == '__main__':
         early_stop_callback=False,
         checkpoint_callback=checkpoint_callback,
         val_percent_check=0.2,
-        gradient_clip_val=.3
+        gradient_clip_val=.03,
+        accumulate_grad_batches=12
     )
     trainer.fit(model)
